@@ -19,7 +19,7 @@ import { RootStackParamList } from '../Navigation';
 type Props = NativeStackScreenProps<RootStackParamList, 'Study'>;
 
 export const StudyScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { mode } = route.params;
+  const { mode, shuffle } = route.params;
   const [words, setWords] = useState<WordCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const insets = useSafeAreaInsets();
@@ -37,7 +37,14 @@ export const StudyScreen: React.FC<Props> = ({ route, navigation }) => {
       ]);
       return;
     }
-    setWords(loadedWords);
+
+    // 如果需要乱序，则打乱单词顺序
+    if (shuffle) {
+      const shuffledWords = [...loadedWords].sort(() => Math.random() - 0.5);
+      setWords(shuffledWords);
+    } else {
+      setWords(loadedWords);
+    }
   };
 
   const getCurrentCard = () => {
@@ -102,7 +109,12 @@ export const StudyScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const question = mode === 'english-to-chinese' ? currentCard.english : currentCard.chinese;
   const answer = mode === 'english-to-chinese' ? currentCard.chinese : currentCard.english;
-  const modeTitle = mode === 'english-to-chinese' ? '看英语说汉语' : '看汉语说英语';
+  let modeTitle: string;
+  if (mode === 'english-to-chinese') {
+    modeTitle = shuffle ? '乱序英语' : '顺序英语';
+  } else {
+    modeTitle = shuffle ? '乱序汉语' : '顺序汉语';
+  }
 
   return (
     <SafeAreaView style={styles.container}>

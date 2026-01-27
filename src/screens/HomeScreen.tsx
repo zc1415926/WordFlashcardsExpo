@@ -37,21 +37,41 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
-            onPress={() => navigation.navigate('Study', { mode: 'english-to-chinese' })}
-            disabled={wordCount === 0}
-          >
-            <Text style={styles.buttonText}>看英语说汉语</Text>
-          </TouchableOpacity>
+          <View style={styles.rowButtonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton, styles.halfButton]}
+              onPress={() => navigation.navigate('Study', { mode: 'english-to-chinese', shuffle: false })}
+              disabled={wordCount === 0}
+            >
+              <Text style={styles.buttonText}>顺序英语</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
-            onPress={() => navigation.navigate('Study', { mode: 'chinese-to-english' })}
-            disabled={wordCount === 0}
-          >
-            <Text style={styles.buttonText}>看汉语说英语</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton, styles.halfButton]}
+              onPress={() => navigation.navigate('Study', { mode: 'english-to-chinese', shuffle: true })}
+              disabled={wordCount === 0}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>乱序英语</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.rowButtonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton, styles.halfButton]}
+              onPress={() => navigation.navigate('Study', { mode: 'chinese-to-english', shuffle: false })}
+              disabled={wordCount === 0}
+            >
+              <Text style={styles.buttonText}>顺序汉语</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton, styles.halfButton]}
+              onPress={() => navigation.navigate('Study', { mode: 'chinese-to-english', shuffle: true })}
+              disabled={wordCount === 0}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>乱序汉语</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.button, styles.secondaryButton]}
@@ -106,6 +126,13 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     gap: 15,
+  },
+  rowButtonContainer: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  halfButton: {
+    flex: 1,
   },
   button: {
     padding: 20,

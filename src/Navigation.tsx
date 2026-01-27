@@ -8,7 +8,7 @@ import { StudyScreen } from './screens/StudyScreen';
 export type RootStackParamList = {
   Home: undefined;
   WordManagement: undefined;
-  Study: { mode: 'english-to-chinese' | 'chinese-to-english' };
+  Study: { mode: 'english-to-chinese' | 'chinese-to-english'; shuffle: boolean };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
