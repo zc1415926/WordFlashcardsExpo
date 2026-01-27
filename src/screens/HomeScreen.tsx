@@ -7,12 +7,40 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StorageService } from '../services/StorageService';
 import { WordCard } from '../types';
 import { RootStackParamList } from '../Navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+const EditIcon = () => (
+  <Svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2C3E50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <Path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
+    <Path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415" />
+    <Path d="M16 5l3 3" />
+  </Svg>
+);
+
+const ExportIcon = () => (
+  <Svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2C3E50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <Path d="M12.5 21h-6.5a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8" />
+    <Path d="M19 16v6" />
+    <Path d="M22 19l-3 3l-3 -3" />
+    <Path d="M11 17a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" />
+  </Svg>
+);
+
+const ImportIcon = () => (
+  <Svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2C3E50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <Path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <Path d="M5 13v-8a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5.5m-9.5 -2h7m-3 -3l3 3l-3 3" />
+  </Svg>
+);
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [wordCount, setWordCount] = useState(0);
@@ -75,25 +103,25 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.rowButtonContainer}>
             <TouchableOpacity
-              style={[styles.button, styles.secondaryButton, styles.thirdButton]}
+              style={[styles.button, styles.secondaryButton, styles.thirdButton, styles.iconButton]}
               onPress={() => navigation.navigate('WordManagement')}
             >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>管理单词</Text>
+              <EditIcon />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, styles.secondaryButton, styles.thirdButton]}
+              style={[styles.button, styles.secondaryButton, styles.thirdButton, styles.iconButton]}
               onPress={() => navigation.navigate('WordManagement', { action: 'export' })}
               disabled={wordCount === 0}
             >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>出</Text>
+              <ExportIcon />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, styles.secondaryButton, styles.thirdButton]}
+              style={[styles.button, styles.secondaryButton, styles.thirdButton, styles.iconButton]}
               onPress={() => navigation.navigate('WordManagement', { action: 'import' })}
             >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>入</Text>
+              <ImportIcon />
             </TouchableOpacity>
           </View>
         </View>
@@ -177,5 +205,8 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: '#2C3E50',
+  },
+  iconButton: {
+    padding: 12,
   },
 });

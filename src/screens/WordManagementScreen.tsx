@@ -385,6 +385,7 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
             value={english}
             onChangeText={setEnglish}
             placeholderTextColor="#999"
+            textAlignVertical="center"
           />
           <TextInput
             style={styles.input}
@@ -392,6 +393,7 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
             value={chinese}
             onChangeText={setChinese}
             placeholderTextColor="#999"
+            textAlignVertical="center"
           />
           <TouchableOpacity style={styles.addButton} onPress={handleAddWord}>
             <Text style={styles.addButtonText}>添加单词</Text>
@@ -546,10 +548,15 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#F5F5F5',
     borderRadius: 10,
-    padding: 15,
+    paddingHorizontal: 15,
+    paddingTop: 0,
+    paddingBottom: 0,
     fontSize: 18,
     marginBottom: 10,
     color: '#333',
+    height: 50,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   addButton: {
     backgroundColor: '#4ECDC4',
