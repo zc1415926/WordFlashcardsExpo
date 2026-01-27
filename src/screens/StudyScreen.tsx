@@ -49,37 +49,38 @@ export const StudyScreen: React.FC<Props> = ({ route, navigation }) => {
     if (currentIndex < words.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      Alert.alert('恭喜', '你已经学完所有单词！', [
-        { text: '返回首页', onPress: () => navigation.navigate('Home') },
-        { text: '重新开始', onPress: () => setCurrentIndex(0) },
-      ]);
+      // 循环回到第一个单词
+      setCurrentIndex(0);
     }
   };
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+    } else {
+      // 循环到最后一个单词
+      setCurrentIndex(words.length - 1);
     }
   };
 
   const getNextCardData = () => {
-    if (currentIndex < words.length - 1) {
-      const nextCard = words[currentIndex + 1];
-      const question = mode === 'english-to-chinese' ? nextCard.english : nextCard.chinese;
-      const answer = mode === 'english-to-chinese' ? nextCard.chinese : nextCard.english;
-      return { question, answer };
-    }
-    return null;
+    if (words.length === 0) return null;
+
+    const nextIndex = (currentIndex + 1) % words.length;
+    const nextCard = words[nextIndex];
+    const question = mode === 'english-to-chinese' ? nextCard.english : nextCard.chinese;
+    const answer = mode === 'english-to-chinese' ? nextCard.chinese : nextCard.english;
+    return { question, answer };
   };
 
   const getPreviousCardData = () => {
-    if (currentIndex > 0) {
-      const prevCard = words[currentIndex - 1];
-      const question = mode === 'english-to-chinese' ? prevCard.english : prevCard.chinese;
-      const answer = mode === 'english-to-chinese' ? prevCard.chinese : prevCard.english;
-      return { question, answer };
-    }
-    return null;
+    if (words.length === 0) return null;
+
+    const prevIndex = currentIndex === 0 ? words.length - 1 : currentIndex - 1;
+    const prevCard = words[prevIndex];
+    const question = mode === 'english-to-chinese' ? prevCard.english : prevCard.chinese;
+    const answer = mode === 'english-to-chinese' ? prevCard.chinese : prevCard.english;
+    return { question, answer };
   };
 
   const handleFlip = () => {
