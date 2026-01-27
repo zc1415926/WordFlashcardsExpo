@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,21 @@ interface FlashCardProps {
   onNext: () => void;
   onPrevious: () => void;
   mode: 'english-to-chinese' | 'chinese-to-english';
+  onNextData?: () => { question: string; answer: string } | null;
+  onPreviousData?: () => { question: string; answer: string } | null;
+}
+
+interface CardData {
+  question: string;
+  answer: string;
+}
+
+interface CardState {
+  panX: Animated.Value;
+  scale: Animated.Value;
+  opacity: Animated.Value;
+  flipAnimation: Animated.Value;
+  isFlipped: boolean;
 }
 
 export const FlashCard: React.FC<FlashCardProps> = ({
@@ -27,153 +42,245 @@ export const FlashCard: React.FC<FlashCardProps> = ({
   onNext: onNextProp,
   onPrevious,
   mode,
+  onNextData,
+  onPreviousData,
 }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [flipAnimation] = useState(new Animated.Value(0));
-  const panX = useState(new Animated.Value(0))[0];
-  const scale = useState(new Animated.Value(1))[0];
-  const opacity = useState(new Animated.Value(1))[0];
+  const [cardAData, setCardAData] = useState<CardData>({ question, answer });
+  const [cardBData, setCardBData] = useState<CardData>({ question, answer });
+
+  // 两个卡片的状态
+  const cardA = useRef<CardState>({
+    panX: new Animated.Value(0),
+    scale: new Animated.Value(1),
+    opacity: new Animated.Value(1),
+    flipAnimation: new Animated.Value(0),
+    isFlipped: false,
+  }).current;
+
+  const cardB = useRef<CardState>({
+    panX: new Animated.Value(500),
+    scale: new Animated.Value(0.8),
+    opacity: new Animated.Value(0),
+    flipAnimation: new Animated.Value(0),
+    isFlipped: false,
+  }).current;
+
+  const [activeCard, setActiveCard] = useState<'A' | 'B'>('A');
+  const isAnimating = useRef(false);
+
+  // 当props变化时，更新当前卡片数据
+  useEffect(() => {
+    if (!isAnimating.current) {
+      if (activeCard === 'A') {
+        setCardAData({ question, answer });
+      } else {
+        setCardBData({ question, answer });
+      }
+    }
+  }, [question, answer]);
+
+  const getActiveCard = () => (activeCard === 'A' ? cardA : cardB);
+  const getInactiveCard = () => (activeCard === 'A' ? cardB : cardA);
+  const getActiveCardData = () => (activeCard === 'A' ? cardAData : cardBData);
+  const getInactiveCardData = () => (activeCard === 'A' ? cardBData : cardAData);
+
+  const resetCard = (card: CardState) => {
+    card.isFlipped = false;
+    card.flipAnimation.setValue(0);
+    card.panX.setValue(0);
+    card.scale.setValue(1);
+    card.opacity.setValue(1);
+  };
 
   const handleFlip = () => {
-    Animated.timing(flipAnimation, {
-      toValue: isFlipped ? 0 : 1,
+    const card = getActiveCard();
+    Animated.timing(card.flipAnimation, {
+      toValue: card.isFlipped ? 0 : 1,
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      setIsFlipped(!isFlipped);
+      card.isFlipped = !card.isFlipped;
       onFlip();
     });
   };
 
-  const handleSpeak = async () => {
-    const textToSpeak = mode === 'english-to-chinese' ? question : answer;
+  const handleSpeak = async (questionText: string, answerText: string) => {
+    const textToSpeak = mode === 'english-to-chinese' ? questionText : answerText;
     await TTSService.speak(textToSpeak);
   };
 
-  const resetCardAnimation = () => {
-    setIsFlipped(false);
-    flipAnimation.setValue(0);
-    panX.setValue(0);
-    scale.setValue(1);
-    opacity.setValue(1);
-  };
-
   const handleNext = () => {
+    if (isAnimating.current) return;
+    isAnimating.current = true;
+
+    const outgoing = getActiveCard();
+    const incoming = getInactiveCard();
+
+    // 预加载下一个卡片数据
+    const nextData = onNextData ? onNextData() : null;
+    if (nextData) {
+      if (activeCard === 'A') {
+        setCardBData(nextData);
+      } else {
+        setCardAData(nextData);
+      }
+    }
+
+    // 重置并设置入场动画的初始状态
+    resetCard(incoming);
+    incoming.panX.setValue(500);
+    incoming.scale.setValue(0.8);
+    incoming.opacity.setValue(0);
+
+    // 同时执行退出和入场动画
     Animated.parallel([
-      Animated.timing(panX, {
-        toValue: -500,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
-        toValue: 0.8,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      // 退出动画
+      Animated.parallel([
+        Animated.timing(outgoing.panX, {
+          toValue: -500,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(outgoing.scale, {
+          toValue: 0.8,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(outgoing.opacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+      // 入场动画，延迟100ms开始
+      Animated.sequence([
+        Animated.delay(100),
+        Animated.parallel([
+          Animated.spring(incoming.panX, {
+            toValue: 0,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+          Animated.spring(incoming.scale, {
+            toValue: 1,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+          Animated.spring(incoming.opacity, {
+            toValue: 1,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
     ]).start(() => {
       onNextProp();
-      resetCardAnimation();
-      // 设置初始状态：从右侧进入
-      panX.setValue(500);
-      scale.setValue(0.8);
-      opacity.setValue(0);
-      // 执行入场动画
-      Animated.parallel([
-        Animated.spring(panX, {
-          toValue: 0,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scale, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(opacity, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      setActiveCard(activeCard === 'A' ? 'B' : 'A');
+      isAnimating.current = false;
     });
   };
 
   const handlePrevious = () => {
+    if (isAnimating.current) return;
+    isAnimating.current = true;
+
+    const outgoing = getActiveCard();
+    const incoming = getInactiveCard();
+
+    // 预加载上一个卡片数据
+    const prevData = onPreviousData ? onPreviousData() : null;
+    if (prevData) {
+      if (activeCard === 'A') {
+        setCardBData(prevData);
+      } else {
+        setCardAData(prevData);
+      }
+    }
+
+    // 重置并设置入场动画的初始状态
+    resetCard(incoming);
+    incoming.panX.setValue(-500);
+    incoming.scale.setValue(0.8);
+    incoming.opacity.setValue(0);
+
+    // 同时执行退出和入场动画
     Animated.parallel([
-      Animated.timing(panX, {
-        toValue: 500,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
-        toValue: 0.8,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      // 退出动画
+      Animated.parallel([
+        Animated.timing(outgoing.panX, {
+          toValue: 500,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(outgoing.scale, {
+          toValue: 0.8,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(outgoing.opacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+      // 入场动画，延迟100ms开始
+      Animated.sequence([
+        Animated.delay(100),
+        Animated.parallel([
+          Animated.spring(incoming.panX, {
+            toValue: 0,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+          Animated.spring(incoming.scale, {
+            toValue: 1,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+          Animated.spring(incoming.opacity, {
+            toValue: 1,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
     ]).start(() => {
       onPrevious();
-      resetCardAnimation();
-      // 设置初始状态：从左侧进入
-      panX.setValue(-500);
-      scale.setValue(0.8);
-      opacity.setValue(0);
-      // 执行入场动画
-      Animated.parallel([
-        Animated.spring(panX, {
-          toValue: 0,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scale, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(opacity, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      setActiveCard(activeCard === 'A' ? 'B' : 'A');
+      isAnimating.current = false;
     });
   };
 
   const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponder: () => !isAnimating.current,
     onMoveShouldSetPanResponder: (_, gestureState) => {
-      return Math.abs(gestureState.dx) > 10;
+      return !isAnimating.current && Math.abs(gestureState.dx) > 10;
     },
     onPanResponderMove: (_, gestureState) => {
-      Animated.timing(panX, {
+      if (isAnimating.current) return;
+      const card = getActiveCard();
+      Animated.timing(card.panX, {
         toValue: gestureState.dx,
         duration: 0,
         useNativeDriver: true,
       }).start();
     },
     onPanResponderRelease: (_, gestureState) => {
+      if (isAnimating.current) return;
+      const card = getActiveCard();
       const threshold = 50;
       if (gestureState.dx > threshold) {
         handlePrevious();
       } else if (gestureState.dx < -threshold) {
         handleNext();
       } else {
-        Animated.spring(panX, {
+        Animated.spring(card.panX, {
           toValue: 0,
           friction: 8,
           tension: 40,
@@ -183,56 +290,65 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     },
   });
 
-  const frontInterpolate = flipAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
-  });
+  const renderCard = (card: CardState, cardData: CardData, isBack: boolean = false) => {
+    const frontInterpolate = card.flipAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '180deg'],
+    });
 
-  const backInterpolate = flipAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['180deg', '360deg'],
-  });
+    const backInterpolate = card.flipAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['180deg', '360deg'],
+    });
 
-  const frontAnimatedStyle = {
-    transform: [
-      { rotateY: frontInterpolate },
-      { translateX: panX },
-      { scale },
-    ],
-    opacity,
-  };
+    const frontAnimatedStyle = {
+      transform: [
+        { rotateY: frontInterpolate },
+        { translateX: card.panX },
+        { scale: card.scale },
+      ],
+      opacity: card.opacity,
+    };
 
-  const backAnimatedStyle = {
-    transform: [
-      { rotateY: backInterpolate },
-      { translateX: panX },
-      { scale },
-    ],
-    opacity,
+    const backAnimatedStyle = {
+      transform: [
+        { rotateY: backInterpolate },
+        { translateX: card.panX },
+        { scale: card.scale },
+      ],
+      opacity: card.opacity,
+    };
+
+    return (
+      <>
+        <Animated.View style={[styles.card, frontAnimatedStyle, styles.cardFront]}>
+          <Text style={styles.questionLabel}>问题</Text>
+          <Text style={styles.questionText}>{cardData.question}</Text>
+          <TouchableOpacity style={styles.speakButton} onPress={() => handleSpeak(cardData.question, cardData.answer)}>
+            <Text style={styles.speakButtonText}>🔊 播放发音</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.flipButton} onPress={handleFlip}>
+            <Text style={styles.flipButtonText}>查看答案</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {card.isFlipped && (
+          <Animated.View style={[styles.card, backAnimatedStyle, styles.cardBack]}>
+            <Text style={styles.answerLabel}>答案</Text>
+            <Text style={styles.answerText}>{cardData.answer}</Text>
+            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+              <Text style={styles.nextButtonText}>下一个 →</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+      </>
+    );
   };
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      <Animated.View style={[styles.card, frontAnimatedStyle, styles.cardFront]}>
-        <Text style={styles.questionLabel}>问题</Text>
-        <Text style={styles.questionText}>{question}</Text>
-        <TouchableOpacity style={styles.speakButton} onPress={handleSpeak}>
-          <Text style={styles.speakButtonText}>🔊 播放发音</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.flipButton} onPress={handleFlip}>
-          <Text style={styles.flipButtonText}>查看答案</Text>
-        </TouchableOpacity>
-      </Animated.View>
-
-      {isFlipped && (
-        <Animated.View style={[styles.card, backAnimatedStyle, styles.cardBack]}>
-          <Text style={styles.answerLabel}>答案</Text>
-          <Text style={styles.answerText}>{answer}</Text>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>下一个 →</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+      {renderCard(cardA, cardAData)}
+      {renderCard(cardB, cardBData)}
     </View>
   );
 };

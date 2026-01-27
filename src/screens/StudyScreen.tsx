@@ -62,6 +62,26 @@ export const StudyScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  const getNextCardData = () => {
+    if (currentIndex < words.length - 1) {
+      const nextCard = words[currentIndex + 1];
+      const question = mode === 'english-to-chinese' ? nextCard.english : nextCard.chinese;
+      const answer = mode === 'english-to-chinese' ? nextCard.chinese : nextCard.english;
+      return { question, answer };
+    }
+    return null;
+  };
+
+  const getPreviousCardData = () => {
+    if (currentIndex > 0) {
+      const prevCard = words[currentIndex - 1];
+      const question = mode === 'english-to-chinese' ? prevCard.english : prevCard.chinese;
+      const answer = mode === 'english-to-chinese' ? prevCard.chinese : prevCard.english;
+      return { question, answer };
+    }
+    return null;
+  };
+
   const handleFlip = () => {
     // 可以在这里添加翻转逻辑
   };
@@ -104,6 +124,8 @@ export const StudyScreen: React.FC<Props> = ({ route, navigation }) => {
           onNext={handleNext}
           onPrevious={handlePrevious}
           mode={mode}
+          onNextData={getNextCardData}
+          onPreviousData={getPreviousCardData}
         />
 
         <View style={styles.hintContainer}>
