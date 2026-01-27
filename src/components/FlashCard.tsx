@@ -332,7 +332,6 @@ export const FlashCard: React.FC<FlashCardProps> = ({
             opacity: questionOpacity,
             transform: [{ translateY: questionTranslateY }],
             alignItems: 'center',
-            pointerEvents: isFlipped ? 'none' : 'auto',
           }}
         >
           <Text style={styles.questionText}>{cardData.question}</Text>
@@ -350,11 +349,10 @@ export const FlashCard: React.FC<FlashCardProps> = ({
               transform: [{ translateY: answerTranslateY }],
             },
           ]}
-          pointerEvents={isFlipped ? 'auto' : 'none'}
         >
           <Text style={styles.answerText}>{cardData.answer}</Text>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>下一个 →</Text>
+          <TouchableOpacity style={styles.nextButton} onPress={handleFlip}>
+            <Text style={styles.nextButtonText}>返回</Text>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>
@@ -419,7 +417,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginTop: -20,
-    marginBottom: 20,
+    marginBottom: 80,
   },
   flipButton: {
     backgroundColor: '#4ECDC4',
