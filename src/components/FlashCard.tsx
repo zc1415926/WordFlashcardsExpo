@@ -9,7 +9,6 @@ import {
   GestureResponderEvent,
   PanResponderGestureState,
 } from 'react-native';
-import { TTSService } from '../services/TTSService';
 
 interface FlashCardProps {
   question: string;
@@ -104,11 +103,6 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     });
   };
 
-  const handleSpeak = async (questionText: string, answerText: string) => {
-    const textToSpeak = mode === 'english-to-chinese' ? questionText : answerText;
-    await TTSService.speak(textToSpeak);
-  };
-
   const handleNext = () => {
     if (isAnimating.current) return;
     isAnimating.current = true;
@@ -138,43 +132,37 @@ export const FlashCard: React.FC<FlashCardProps> = ({
       Animated.parallel([
         Animated.timing(outgoing.panX, {
           toValue: -500,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(outgoing.scale, {
           toValue: 0.8,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(outgoing.opacity, {
           toValue: 0,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
       ]),
-      // 入场动画，延迟100ms开始
-      Animated.sequence([
-        Animated.delay(100),
-        Animated.parallel([
-          Animated.spring(incoming.panX, {
-            toValue: 0,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.spring(incoming.scale, {
-            toValue: 1,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.spring(incoming.opacity, {
-            toValue: 1,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-        ]),
+      // 入场动画，立即开始，使用timing替代spring
+      Animated.parallel([
+        Animated.timing(incoming.panX, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(incoming.scale, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(incoming.opacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
       ]),
     ]).start(() => {
       onNextProp();
@@ -212,43 +200,37 @@ export const FlashCard: React.FC<FlashCardProps> = ({
       Animated.parallel([
         Animated.timing(outgoing.panX, {
           toValue: 500,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(outgoing.scale, {
           toValue: 0.8,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(outgoing.opacity, {
           toValue: 0,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
       ]),
-      // 入场动画，延迟100ms开始
-      Animated.sequence([
-        Animated.delay(100),
-        Animated.parallel([
-          Animated.spring(incoming.panX, {
-            toValue: 0,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.spring(incoming.scale, {
-            toValue: 1,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.spring(incoming.opacity, {
-            toValue: 1,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-        ]),
+      // 入场动画，立即开始，使用timing替代spring
+      Animated.parallel([
+        Animated.timing(incoming.panX, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(incoming.scale, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(incoming.opacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
       ]),
     ]).start(() => {
       onPrevious();
@@ -280,10 +262,9 @@ export const FlashCard: React.FC<FlashCardProps> = ({
       } else if (gestureState.dx < -threshold) {
         handleNext();
       } else {
-        Animated.spring(card.panX, {
+        Animated.timing(card.panX, {
           toValue: 0,
-          friction: 8,
-          tension: 40,
+          duration: 200,
           useNativeDriver: true,
         }).start();
       }
@@ -322,11 +303,7 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     return (
       <>
         <Animated.View style={[styles.card, frontAnimatedStyle, styles.cardFront]}>
-          <Text style={styles.questionLabel}>问题</Text>
           <Text style={styles.questionText}>{cardData.question}</Text>
-          <TouchableOpacity style={styles.speakButton} onPress={() => handleSpeak(cardData.question, cardData.answer)}>
-            <Text style={styles.speakButtonText}>🔊 播放发音</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.flipButton} onPress={handleFlip}>
             <Text style={styles.flipButtonText}>查看答案</Text>
           </TouchableOpacity>
@@ -334,7 +311,6 @@ export const FlashCard: React.FC<FlashCardProps> = ({
 
         {card.isFlipped && (
           <Animated.View style={[styles.card, backAnimatedStyle, styles.cardBack]}>
-            <Text style={styles.answerLabel}>答案</Text>
             <Text style={styles.answerText}>{cardData.answer}</Text>
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
               <Text style={styles.nextButtonText}>下一个 →</Text>
@@ -365,9 +341,10 @@ const styles = StyleSheet.create({
     height: 350,
     borderRadius: 25,
     backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    padding: 30,
+    paddingTop: 60,
+    padding: 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.34,
@@ -382,62 +359,42 @@ const styles = StyleSheet.create({
     backfaceVisibility: 'hidden',
     backgroundColor: '#4ECDC4',
   },
-  questionLabel: {
-    fontSize: 24,
-    color: '#999',
-    marginBottom: 10,
-  },
   questionText: {
-    fontSize: 42,
+    fontSize: 56,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 30,
-  },
-  answerLabel: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    marginBottom: 10,
+    marginTop: -20,
+    marginBottom: 80,
   },
   answerText: {
-    fontSize: 42,
+    fontSize: 56,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 30,
-  },
-  speakButton: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 25,
-    marginBottom: 15,
-  },
-  speakButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    marginTop: -40,
+    marginBottom: 20,
   },
   flipButton: {
     backgroundColor: '#4ECDC4',
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 25,
+    paddingHorizontal: 50,
+    paddingVertical: 18,
+    borderRadius: 30,
   },
   flipButtonText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
   },
   nextButton: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 25,
+    paddingHorizontal: 50,
+    paddingVertical: 18,
+    borderRadius: 30,
   },
   nextButtonText: {
     color: '#4ECDC4',
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
   },
 });
