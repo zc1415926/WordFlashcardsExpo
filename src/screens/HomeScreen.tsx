@@ -47,11 +47,11 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, styles.secondaryButton, styles.halfButton]}
+              style={[styles.button, styles.primaryButton, styles.halfButton]}
               onPress={() => navigation.navigate('Study', { mode: 'english-to-chinese', shuffle: true })}
               disabled={wordCount === 0}
             >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>乱序英语</Text>
+              <Text style={styles.buttonText}>乱序英语</Text>
             </TouchableOpacity>
           </View>
 
@@ -65,11 +65,11 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, styles.secondaryButton, styles.halfButton]}
+              style={[styles.button, styles.primaryButton, styles.halfButton]}
               onPress={() => navigation.navigate('Study', { mode: 'chinese-to-english', shuffle: true })}
               disabled={wordCount === 0}
             >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>乱序汉语</Text>
+              <Text style={styles.buttonText}>乱序汉语</Text>
             </TouchableOpacity>
           </View>
 
