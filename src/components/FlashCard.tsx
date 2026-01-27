@@ -394,8 +394,10 @@ const styles = StyleSheet.create({
   },
   answerContainer: {
     position: 'absolute',
-    width: '100%',
-    height: '100%',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#4ECDC4',
     borderRadius: 25,
     justifyContent: 'flex-start',
