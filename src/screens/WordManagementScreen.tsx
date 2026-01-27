@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { File, Directory, Paths } from 'expo-file-system';
 import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -119,11 +120,64 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
       console.log('Directory 对象:', dirObj);
       console.log('Directory 方法:', Object.getOwnPropertyNames(Object.getPrototypeOf(dirObj)));
       
+      // 生成唯一的文件名
+      let fileName = 'words.csv';
+      try {
+        // 使用 list() 而不是 listFiles()
+        const items = await dirObj.list();
+        console.log('目录中的文件/文件夹:', items);
+        console.log('所有文件名:', items.map(i => i.name));
+        
+        // 提取现有的 words.csv 相关文件（匹配两种格式：words.csv, words(1).csv, words.csv (1)）
+        const wordsItems = items.filter(item => {
+          return item.type === 'file' && (
+            item.name.match(/^words(\(\d+\))?\.csv$/i) || 
+            item.name.match(/^words\.csv\s*\(\d+\)$/i)
+          );
+        });
+        console.log('words 相关文件:', wordsItems);
+        
+        if (wordsItems.length > 0) {
+          // 找到最大的编号
+          let maxNum = 0;
+          wordsItems.forEach(item => {
+            // 匹配 words(数字).csv 格式
+            let match = item.name.match(/^words\((\d+)\)\.csv$/i);
+            if (!match) {
+              // 匹配 words.csv (数字) 格式
+              match = item.name.match(/^words\.csv\s*\((\d+)\)$/i);
+            }
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (num > maxNum) {
+                maxNum = num;
+              }
+            }
+          });
+          
+          // 生成新的文件名：words(数字).csv
+          fileName = `words(${maxNum + 1}).csv`;
+          console.log('使用新文件名:', fileName);
+        }
+      } catch (listError) {
+        console.log('列出目录文件失败，可能目录为空:', listError);
+      }
+      
       // 尝试创建文件
       try {
-        console.log('尝试调用 createFile("words.csv", csvContent)');
-        const file = await dirObj.createFile('words.csv', csvContent);
-        console.log('文件已创建:', file.uri);
+        console.log('CSV 内容长度:', csvContent.length);
+        console.log('CSV 内容前100个字符:', csvContent.substring(0, 100));
+        console.log('创建文件:', fileName);
+        
+        // 先创建文件（createFile 可能只接受文件名）
+        const file = await dirObj.createFile(fileName);
+        console.log('文件已创建:', file);
+        console.log('文件 URI:', file.uri);
+        console.log('文件 name:', file.name);
+        
+        // 使用 legacy API 写入内容
+        await FileSystem.writeAsStringAsync(file.uri, csvContent);
+        console.log('文件内容已写入');
         
         Alert.alert(
           '导出成功',
@@ -136,39 +190,8 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
         console.error('创建文件失败:', createError);
         console.error('错误类型:', createError?.constructor?.name);
         console.error('错误消息:', createError?.message);
-        
-        // 如果文件已存在，尝试删除后重新创建
-        console.log('尝试删除旧文件并重新创建');
-        
-        try {
-          // 列出目录中的文件
-          const files = await dirObj.listFiles();
-          console.log('目录中的文件:', files);
-          
-          // 查找 words.csv
-          const existingFile = files.find(f => f.name === 'words.csv');
-          
-          if (existingFile) {
-            console.log('找到已存在的文件，尝试删除:', existingFile.uri);
-            await existingFile.remove();
-            console.log('已删除旧文件');
-          }
-          
-          // 重新创建文件
-          const file = await dirObj.createFile('words.csv', csvContent);
-          console.log('文件已创建:', file.uri);
-          
-          Alert.alert(
-            '导出成功',
-            `已成功导出 ${exportWords.length} 个单词\n\n文件位置: ${file.uri}`,
-            [
-              { text: '确定', onPress: () => {} },
-            ]
-          );
-        } catch (retryError) {
-          console.error('重试失败:', retryError);
-          throw retryError;
-        }
+        console.error('错误堆栈:', createError?.stack);
+        throw createError;
       }
     } catch (error) {
       console.error('导出失败:', error);
@@ -226,14 +249,9 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
       console.log('选择的文件:', file);
       console.log('文件 URI:', file.uri);
 
-      // 使用新的 File API 读取文件内容
-      // File 类实现了 Blob 接口，可以使用 text() 方法
-      console.log('创建 File 对象');
-      const fileObj = new File(file.uri);
-      console.log('File 对象:', fileObj);
-      
-      console.log('调用 text() 方法');
-      const content = await fileObj.text();
+      // 使用 legacy API 读取文件内容（因为新 API 的 File 没有 text() 方法）
+      console.log('使用 legacy API 读取文件');
+      const content = await FileSystem.readAsStringAsync(file.uri);
 
       console.log('文件内容长度:', content.length);
 
