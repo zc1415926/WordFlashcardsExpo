@@ -12,8 +12,11 @@ import {
   Keyboard,
   Modal,
   ScrollView,
-  Clipboard,
+  Platform,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { File, Directory, Paths } from 'expo-file-system';
+import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StorageService } from '../services/StorageService';
@@ -102,23 +105,155 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
     const csvContent = exportWords.map(word => `${word.english},${word.chinese}`).join('\n');
 
     try {
-      await Clipboard.setString(csvContent);
-      Alert.alert(
-        '导出成功',
-        `已复制 ${exportWords.length} 个单词到剪贴板，格式为 CSV（英语,汉语）`,
-        [
-          { text: '确定', onPress: () => {} },
-        ]
-      );
+      // 让用户选择保存目录
+      const directory = await Directory.pickDirectoryAsync('选择保存位置');
+      
+      if (!directory) {
+        return; // 用户取消了选择
+      }
+      
+      console.log('选择的目录:', directory);
+      
+      // 使用 Directory 对象的 createFile 方法
+      const dirObj = new Directory(directory.uri);
+      console.log('Directory 对象:', dirObj);
+      console.log('Directory 方法:', Object.getOwnPropertyNames(Object.getPrototypeOf(dirObj)));
+      
+      // 尝试创建文件
+      try {
+        console.log('尝试调用 createFile("words.csv", csvContent)');
+        const file = await dirObj.createFile('words.csv', csvContent);
+        console.log('文件已创建:', file.uri);
+        
+        Alert.alert(
+          '导出成功',
+          `已成功导出 ${exportWords.length} 个单词\n\n文件位置: ${file.uri}`,
+          [
+            { text: '确定', onPress: () => {} },
+          ]
+        );
+      } catch (createError) {
+        console.error('创建文件失败:', createError);
+        console.error('错误类型:', createError?.constructor?.name);
+        console.error('错误消息:', createError?.message);
+        
+        // 如果文件已存在，尝试删除后重新创建
+        console.log('尝试删除旧文件并重新创建');
+        
+        try {
+          // 列出目录中的文件
+          const files = await dirObj.listFiles();
+          console.log('目录中的文件:', files);
+          
+          // 查找 words.csv
+          const existingFile = files.find(f => f.name === 'words.csv');
+          
+          if (existingFile) {
+            console.log('找到已存在的文件，尝试删除:', existingFile.uri);
+            await existingFile.remove();
+            console.log('已删除旧文件');
+          }
+          
+          // 重新创建文件
+          const file = await dirObj.createFile('words.csv', csvContent);
+          console.log('文件已创建:', file.uri);
+          
+          Alert.alert(
+            '导出成功',
+            `已成功导出 ${exportWords.length} 个单词\n\n文件位置: ${file.uri}`,
+            [
+              { text: '确定', onPress: () => {} },
+            ]
+          );
+        } catch (retryError) {
+          console.error('重试失败:', retryError);
+          throw retryError;
+        }
+      }
     } catch (error) {
-      Alert.alert('导出失败', '复制到剪贴板时出错');
-      console.error('Export error:', error);
+      console.error('导出失败:', error);
+      console.error('错误类型:', error?.constructor?.name);
+      console.error('错误消息:', error?.message);
+      console.error('错误堆栈:', error?.stack);
+      
+      // 如果用户取消或失败，使用剪贴板作为备用方案
+      try {
+        await Clipboard.setStringAsync(csvContent);
+        Alert.alert(
+          '导出成功（备用方案）',
+          `已成功导出 ${exportWords.length} 个单词\n\n由于无法保存到文件，内容已复制到剪贴板\n请粘贴到文本编辑器并保存为 words.csv 文件`,
+          [
+            { text: '确定', onPress: () => {} },
+          ]
+        );
+      } catch (clipboardError) {
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        console.error('Export error:', error);
+        Alert.alert(
+          '导出失败',
+          `复制到剪贴板时出错\n\n错误详情: ${errorMessage}`,
+          [
+            { text: '确定', onPress: () => {} },
+          ]
+        );
+      }
     }
   };
 
-  const handleImport = () => {
-    setImportContent('');
-    setImportModalVisible(true);
+  const handleImport = async () => {
+    try {
+      console.log('=== 开始导入 ===');
+      
+      // 选择文件 - 不指定 type 让系统显示所有文件
+      console.log('调用 DocumentPicker.getDocumentAsync');
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+      });
+
+      console.log('DocumentPicker 结果:', result);
+
+      if (result.canceled) {
+        console.log('用户取消了文件选择');
+        return;
+      }
+
+      const file = result.assets[0];
+      if (!file.uri) {
+        Alert.alert('提示', '未选择文件');
+        return;
+      }
+
+      console.log('选择的文件:', file);
+      console.log('文件 URI:', file.uri);
+
+      // 使用新的 File API 读取文件内容
+      // File 类实现了 Blob 接口，可以使用 text() 方法
+      console.log('创建 File 对象');
+      const fileObj = new File(file.uri);
+      console.log('File 对象:', fileObj);
+      
+      console.log('调用 text() 方法');
+      const content = await fileObj.text();
+
+      console.log('文件内容长度:', content.length);
+
+      // 设置导入内容并显示模态框
+      setImportContent(content);
+      setImportSummary('');
+      setImportModalVisible(true);
+    } catch (error) {
+      console.error('Import error:', error);
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
+      
+      if (DocumentPicker.isCancel(error)) {
+        // 用户取消了文件选择
+        return;
+      }
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      Alert.alert('导入失败', `选择文件时出错\n\n错误详情: ${errorMessage}`);
+    }
   };
 
   const parseImportContent = (content: string): WordCard[] => {
@@ -273,14 +408,36 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>导入单词</Text>
-              <TouchableOpacity onPress={() => setImportModalVisible(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
+                        <Text style={styles.modalTitle}>导入单词</Text>
+                        <View style={styles.modalHeaderButtons}>
+                          <TouchableOpacity
+                            style={styles.modalHeaderButton}
+                            onPress={() => {
+                              setImportContent('');
+                              setImportSummary('');
+                            }}
+                          >
+                            <Text style={styles.modalHeaderButtonText}>清空</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => setImportModalVisible(false)}>
+                            <Text style={styles.modalClose}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
             <ScrollView style={styles.modalBody}>
-              <Text style={styles.modalLabel}>粘贴 CSV 内容（格式：英语,汉语，每行一个）：</Text>
+              <Text style={styles.modalLabel}>
+                方式一：点击"选择文件"按钮选择 CSV 文件
+              </Text>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSelectFile]}
+                onPress={handleImport}
+              >
+                <Text style={styles.modalButtonText}>选择 CSV 文件</Text>
+              </TouchableOpacity>
+
+              <Text style={[styles.modalLabel, { marginTop: 20 }]}>
+                方式二：直接粘贴 CSV 内容（格式：英语,汉语，每行一个）
+              </Text>
               <TextInput
                 style={styles.modalInput}
                 placeholder="例如：&#10;hello,你好&#10;hi,嗨&#10;goodbye,再见"
@@ -308,7 +465,7 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
                   setImportSummary('');
                 }}
               >
-                <Text style={styles.modalButtonText}>取消</Text>
+                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>取消</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -479,6 +636,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  modalHeaderButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modalHeaderButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+  },
+  modalHeaderButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
   modalClose: {
     fontSize: 28,
     color: '#999',
@@ -527,6 +700,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
+  modalButtonSelectFile: {
+    flex: 0,
+    minWidth: 150,
+    backgroundColor: '#4ECDC4',
+    marginTop: 10,
+  },
   modalButtonCancel: {
     backgroundColor: '#E0E0E0',
   },
@@ -540,5 +719,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  modalButtonTextCancel: {
+    color: '#666',
   },
 });
