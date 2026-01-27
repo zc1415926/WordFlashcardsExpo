@@ -53,23 +53,9 @@ export const FlashCard: React.FC<FlashCardProps> = ({
   const resetCardAnimation = () => {
     setIsFlipped(false);
     flipAnimation.setValue(0);
-    Animated.parallel([
-      Animated.timing(panX, {
-        toValue: 0,
-        duration: 0,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: 0,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 0,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    panX.setValue(0);
+    scale.setValue(1);
+    opacity.setValue(1);
   };
 
   const handleNext = () => {
@@ -92,23 +78,11 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     ]).start(() => {
       onNextProp();
       resetCardAnimation();
-      Animated.parallel([
-        Animated.timing(panX, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scale, {
-          toValue: 0.8,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // 设置初始状态：从右侧进入
+      panX.setValue(500);
+      scale.setValue(0.8);
+      opacity.setValue(0);
+      // 执行入场动画
       Animated.parallel([
         Animated.spring(panX, {
           toValue: 0,
@@ -152,23 +126,11 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     ]).start(() => {
       onPrevious();
       resetCardAnimation();
-      Animated.parallel([
-        Animated.timing(panX, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scale, {
-          toValue: 0.8,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // 设置初始状态：从左侧进入
+      panX.setValue(-500);
+      scale.setValue(0.8);
+      opacity.setValue(0);
+      // 执行入场动画
       Animated.parallel([
         Animated.spring(panX, {
           toValue: 0,
