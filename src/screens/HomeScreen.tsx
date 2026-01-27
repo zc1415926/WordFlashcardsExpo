@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { StorageService } from '../services/StorageService';
 import { WordCard } from '../types';
 import { RootStackParamList } from '../Navigation';
@@ -45,9 +46,11 @@ const ImportIcon = () => (
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [wordCount, setWordCount] = useState(0);
 
-  useEffect(() => {
-    loadWordCount();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadWordCount();
+    }, [])
+  );
 
   const loadWordCount = async () => {
     const words = await StorageService.getWords();
