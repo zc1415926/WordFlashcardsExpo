@@ -312,6 +312,11 @@ export const FlashCard: React.FC<FlashCardProps> = ({
       outputRange: [20, 0],
     });
 
+    const answerTranslateX = card.flipAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1000, 0],
+    });
+
     const animatedStyle = {
       transform: [
         { translateX: card.panX },
@@ -346,7 +351,10 @@ export const FlashCard: React.FC<FlashCardProps> = ({
             styles.answerContainer,
             {
               opacity: answerOpacity,
-              transform: [{ translateY: answerTranslateY }],
+              transform: [
+                { translateX: answerTranslateX },
+                { translateY: answerTranslateY },
+              ],
             },
           ]}
         >
