@@ -485,21 +485,21 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
                   setImportSummary('');
                 }}
               >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>取消</Text>
+                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>关闭</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonAppend]}
                 onPress={() => handleImportConfirm('append')}
               >
-                <Text style={styles.modalButtonText}>追加导入</Text>
+                <Text style={styles.modalButtonText}>追加</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonOverwrite]}
                 onPress={() => handleImportConfirm('overwrite')}
               >
-                <Text style={styles.modalButtonText}>覆盖导入</Text>
+                <Text style={styles.modalButtonText}>覆盖</Text>
               </TouchableOpacity>
             </View>
           </View>
