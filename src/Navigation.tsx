@@ -7,7 +7,7 @@ import { StudyScreen } from './screens/StudyScreen';
 
 export type RootStackParamList = {
   Home: undefined;
-  WordManagement: undefined;
+  WordManagement: { action?: 'export' | 'import' };
   Study: { mode: 'english-to-chinese' | 'chinese-to-english'; shuffle: boolean };
 };
 

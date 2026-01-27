@@ -73,12 +73,29 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
-            onPress={() => navigation.navigate('WordManagement')}
-          >
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>管理单词</Text>
-          </TouchableOpacity>
+          <View style={styles.rowButtonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton, styles.thirdButton]}
+              onPress={() => navigation.navigate('WordManagement')}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>管理单词</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton, styles.thirdButton]}
+              onPress={() => navigation.navigate('WordManagement', { action: 'export' })}
+              disabled={wordCount === 0}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>出</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton, styles.thirdButton]}
+              onPress={() => navigation.navigate('WordManagement', { action: 'import' })}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>入</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -132,6 +149,9 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   halfButton: {
+    flex: 1,
+  },
+  thirdButton: {
     flex: 1,
   },
   button: {
