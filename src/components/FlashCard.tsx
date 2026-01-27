@@ -31,7 +31,6 @@ interface CardState {
   scale: Animated.Value;
   opacity: Animated.Value;
   flipAnimation: Animated.Value;
-  isFlipped: boolean;
 }
 
 export const FlashCard: React.FC<FlashCardProps> = ({
@@ -53,7 +52,6 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     scale: new Animated.Value(1),
     opacity: new Animated.Value(1),
     flipAnimation: new Animated.Value(0),
-    isFlipped: false,
   }).current;
 
   const cardB = useRef<CardState>({
@@ -61,11 +59,12 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     scale: new Animated.Value(0.8),
     opacity: new Animated.Value(0),
     flipAnimation: new Animated.Value(0),
-    isFlipped: false,
   }).current;
 
   const [activeCard, setActiveCard] = useState<'A' | 'B'>('A');
   const isAnimating = useRef(false);
+  const cardAIsFlipped = useRef(false);
+  const cardBIsFlipped = useRef(false);
 
   // 当props变化时，更新当前卡片数据
   useEffect(() => {
@@ -83,32 +82,52 @@ export const FlashCard: React.FC<FlashCardProps> = ({
   const getActiveCardData = () => (activeCard === 'A' ? cardAData : cardBData);
   const getInactiveCardData = () => (activeCard === 'A' ? cardBData : cardAData);
 
-  const resetCard = (card: CardState) => {
-    card.isFlipped = false;
+  const resetCard = (card: CardState, isCardA: boolean) => {
     card.flipAnimation.setValue(0);
     card.panX.setValue(0);
     card.scale.setValue(1);
     card.opacity.setValue(1);
+    if (isCardA) {
+      cardAIsFlipped.current = false;
+    } else {
+      cardBIsFlipped.current = false;
+    }
   };
 
   const handleFlip = () => {
+    console.log('=== handleFlip 被调用 ===');
     const card = getActiveCard();
+    const isFlipped = activeCard === 'A' ? cardAIsFlipped.current : cardBIsFlipped.current;
+    const toValue = isFlipped ? 0 : 1;
+    console.log('当前卡片:', activeCard, 'isFlipped:', isFlipped, 'toValue:', toValue);
+
     Animated.timing(card.flipAnimation, {
-      toValue: card.isFlipped ? 0 : 1,
+      toValue: toValue,
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      card.isFlipped = !card.isFlipped;
+      console.log('翻转动画完成');
+      // 更新翻转状态
+      if (activeCard === 'A') {
+        cardAIsFlipped.current = !isFlipped;
+      } else {
+        cardBIsFlipped.current = !isFlipped;
+      }
       onFlip();
     });
   };
 
   const handleNext = () => {
-    if (isAnimating.current) return;
+    console.log('=== handleNext 被调用 ===');
+    if (isAnimating.current) {
+      console.log('正在动画中，忽略 handleNext');
+      return;
+    }
     isAnimating.current = true;
 
     const outgoing = getActiveCard();
     const incoming = getInactiveCard();
+    console.log('当前卡片:', activeCard, '切换到:', activeCard === 'A' ? 'B' : 'A');
 
     // 预加载下一个卡片数据
     const nextData = onNextData ? onNextData() : null;
@@ -121,7 +140,7 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     }
 
     // 重置并设置入场动画的初始状态
-    resetCard(incoming);
+    resetCard(incoming, activeCard === 'A');
     incoming.panX.setValue(500);
     incoming.scale.setValue(0.8);
     incoming.opacity.setValue(0);
@@ -189,7 +208,7 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     }
 
     // 重置并设置入场动画的初始状态
-    resetCard(incoming);
+    resetCard(incoming, activeCard === 'A');
     incoming.panX.setValue(-500);
     incoming.scale.setValue(0.8);
     incoming.opacity.setValue(0);
@@ -272,52 +291,73 @@ export const FlashCard: React.FC<FlashCardProps> = ({
   });
 
   const renderCard = (card: CardState, cardData: CardData, isBack: boolean = false) => {
-    const frontInterpolate = card.flipAnimation.interpolate({
+    // 使用透明度和位移来显示/隐藏答案
+    const questionOpacity = card.flipAnimation.interpolate({
       inputRange: [0, 1],
-      outputRange: ['0deg', '180deg'],
+      outputRange: [1, 0],
     });
 
-    const backInterpolate = card.flipAnimation.interpolate({
+    const questionTranslateY = card.flipAnimation.interpolate({
       inputRange: [0, 1],
-      outputRange: ['180deg', '360deg'],
+      outputRange: [0, -20],
     });
 
-    const frontAnimatedStyle = {
+    const answerOpacity = card.flipAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+
+    const answerTranslateY = card.flipAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+    });
+
+    const animatedStyle = {
       transform: [
-        { rotateY: frontInterpolate },
         { translateX: card.panX },
         { scale: card.scale },
       ],
       opacity: card.opacity,
     };
 
-    const backAnimatedStyle = {
-      transform: [
-        { rotateY: backInterpolate },
-        { translateX: card.panX },
-        { scale: card.scale },
-      ],
-      opacity: card.opacity,
-    };
+    // 判断当前卡片是否翻转
+    const isCardA = card === cardA;
+    const isFlipped = isCardA ? cardAIsFlipped.current : cardBIsFlipped.current;
 
     return (
-      <>
-        <Animated.View style={[styles.card, frontAnimatedStyle, styles.cardFront]}>
+      <Animated.View style={[styles.card, animatedStyle]}>
+        {/* 问题区域 */}
+        <Animated.View
+          style={{
+            opacity: questionOpacity,
+            transform: [{ translateY: questionTranslateY }],
+            alignItems: 'center',
+            pointerEvents: isFlipped ? 'none' : 'auto',
+          }}
+        >
           <Text style={styles.questionText}>{cardData.question}</Text>
           <TouchableOpacity style={styles.flipButton} onPress={handleFlip}>
             <Text style={styles.flipButtonText}>查看答案</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {card.isFlipped && (
-          <Animated.View style={[styles.card, backAnimatedStyle, styles.cardBack]}>
-            <Text style={styles.answerText}>{cardData.answer}</Text>
-            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-              <Text style={styles.nextButtonText}>下一个 →</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-      </>
+        {/* 答案区域 */}
+        <Animated.View
+          style={[
+            styles.answerContainer,
+            {
+              opacity: answerOpacity,
+              transform: [{ translateY: answerTranslateY }],
+            },
+          ]}
+          pointerEvents={isFlipped ? 'auto' : 'none'}
+        >
+          <Text style={styles.answerText}>{cardData.answer}</Text>
+          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+            <Text style={styles.nextButtonText}>下一个 →</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
     );
   };
 
@@ -352,12 +392,16 @@ const styles = StyleSheet.create({
     elevation: 10,
     position: 'absolute',
   },
-  cardFront: {
-    backfaceVisibility: 'hidden',
-  },
-  cardBack: {
-    backfaceVisibility: 'hidden',
+  answerContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
     backgroundColor: '#4ECDC4',
+    borderRadius: 25,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 60,
+    padding: 40,
   },
   questionText: {
     fontSize: 56,
@@ -372,7 +416,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: -40,
+    marginTop: -20,
     marginBottom: 20,
   },
   flipButton: {
