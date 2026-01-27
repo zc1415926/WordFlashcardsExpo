@@ -122,7 +122,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity
               style={[styles.button, styles.secondaryButton, styles.thirdButton, styles.iconButton]}
-              onPress={() => navigation.navigate('WordManagement', { action: 'import' })}
+              onPress={() => navigation.navigate('Import' as never)}
             >
               <ImportIcon />
             </TouchableOpacity>

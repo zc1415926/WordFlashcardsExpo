@@ -10,13 +10,10 @@ import {
   SafeAreaView,
   StatusBar,
   Keyboard,
-  Modal,
   ScrollView,
-  Platform,
 } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { File, Directory, Paths } from 'expo-file-system';
+import { Directory } from 'expo-file-system';
 import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,20 +29,13 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
   const [chinese, setChinese] = useState('');
   const insets = useSafeAreaInsets();
 
-  // 导入导出相关状态
-  const [importModalVisible, setImportModalVisible] = useState(false);
-  const [importContent, setImportContent] = useState('');
-  const [importSummary, setImportSummary] = useState('');
-
   useEffect(() => {
     const initialize = async () => {
       const loadedWords = await loadWords();
 
-      // 检查是否从首页进入，触发导出或导入
+      // 检查是否从首页进入，触发导出
       if (route.params?.action === 'export') {
         handleExport(loadedWords);
-      } else if (route.params?.action === 'import') {
-        handleImport();
       }
     };
 
@@ -223,133 +213,13 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
     }
   };
 
-  const handleImport = async () => {
-    try {
-      console.log('=== 开始导入 ===');
-      
-      // 选择文件 - 不指定 type 让系统显示所有文件
-      console.log('调用 DocumentPicker.getDocumentAsync');
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
-      });
+  
 
-      console.log('DocumentPicker 结果:', result);
+  
 
-      if (result.canceled) {
-        console.log('用户取消了文件选择');
-        return;
-      }
+  
 
-      const file = result.assets[0];
-      if (!file.uri) {
-        Alert.alert('提示', '未选择文件');
-        return;
-      }
-
-      console.log('选择的文件:', file);
-      console.log('文件 URI:', file.uri);
-
-      // 使用 legacy API 读取文件内容（因为新 API 的 File 没有 text() 方法）
-      console.log('使用 legacy API 读取文件');
-      const content = await FileSystem.readAsStringAsync(file.uri);
-
-      console.log('文件内容长度:', content.length);
-
-      // 设置导入内容并显示模态框
-      setImportContent(content);
-      setImportSummary('');
-      setImportModalVisible(true);
-    } catch (error) {
-      console.error('Import error:', error);
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error message:', error?.message);
-      console.error('Error stack:', error?.stack);
-      
-      if (DocumentPicker.isCancel(error)) {
-        // 用户取消了文件选择
-        return;
-      }
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      Alert.alert('导入失败', `选择文件时出错\n\n错误详情: ${errorMessage}`);
-    }
-  };
-
-  const parseImportContent = (content: string): WordCard[] => {
-    const lines = content.trim().split('\n');
-    const importedWords: WordCard[] = [];
-
-    lines.forEach((line, index) => {
-      const parts = line.split(',');
-      if (parts.length >= 2) {
-        const english = parts[0].trim();
-        const chinese = parts.slice(1).join(',').trim(); // 支持汉语中包含逗号
-
-        if (english && chinese) {
-          importedWords.push({
-            id: `import_${Date.now()}_${index}`,
-            english,
-            chinese,
-          });
-        }
-      }
-    });
-
-    return importedWords;
-  };
-
-  const checkDuplicates = (importedWords: WordCard[]): { duplicates: number; uniqueWords: WordCard[] } => {
-    const existingSet = new Set(words.map(w => `${w.english}|${w.chinese}`));
-    const uniqueWords: WordCard[] = [];
-    let duplicates = 0;
-
-    importedWords.forEach(word => {
-      const key = `${word.english}|${word.chinese}`;
-      if (existingSet.has(key)) {
-        duplicates++;
-      } else {
-        uniqueWords.push(word);
-        existingSet.add(key);
-      }
-    });
-
-    return { duplicates, uniqueWords };
-  };
-
-  const handleImportConfirm = async (mode: 'append' | 'overwrite') => {
-    const importedWords = parseImportContent(importContent);
-
-    if (importedWords.length === 0) {
-      Alert.alert('提示', '未找到有效的单词数据');
-      return;
-    }
-
-    if (mode === 'overwrite') {
-      // 覆盖模式：清空现有单词，导入新单词
-      await StorageService.clearAllWords();
-      for (const word of importedWords) {
-        await StorageService.addWord(word);
-      }
-      setImportSummary(`成功导入 ${importedWords.length} 个单词（覆盖原有数据）`);
-    } else {
-      // 追加模式：检查重复
-      const { duplicates, uniqueWords } = checkDuplicates(importedWords);
-
-      if (uniqueWords.length === 0) {
-        setImportSummary(`导入的 ${importedWords.length} 个单词全部重复，未添加任何新单词`);
-      } else {
-        for (const word of uniqueWords) {
-          await StorageService.addWord(word);
-        }
-        if (duplicates > 0) {
-          setImportSummary(`成功导入 ${uniqueWords.length} 个新单词，跳过 ${duplicates} 个重复单词`);
-        } else {
-          setImportSummary(`成功导入 ${uniqueWords.length} 个单词`);
-        }
-      }
-    }
-
-    await loadWords();
-  };
+  
 
   const renderWordItem = ({ item }: { item: WordCard }) => (
     <View style={styles.wordItem}>
@@ -418,93 +288,7 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
         </View>
       </View>
 
-      {/* 导入模态框 */}
-      <Modal
-        visible={importModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setImportModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>导入单词</Text>
-                        <View style={styles.modalHeaderButtons}>
-                          <TouchableOpacity
-                            style={styles.modalHeaderButton}
-                            onPress={() => {
-                              setImportContent('');
-                              setImportSummary('');
-                            }}
-                          >
-                            <Text style={styles.modalHeaderButtonText}>清空</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => setImportModalVisible(false)}>
-                            <Text style={styles.modalClose}>✕</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-            <ScrollView style={styles.modalBody}>
-              <Text style={styles.modalLabel}>
-                方式一：点击"选择文件"按钮选择 CSV 文件
-              </Text>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonSelectFile]}
-                onPress={handleImport}
-              >
-                <Text style={styles.modalButtonText}>选择 CSV 文件</Text>
-              </TouchableOpacity>
-
-              <Text style={[styles.modalLabel, { marginTop: 20 }]}>
-                方式二：直接粘贴 CSV 内容（格式：英语,汉语，每行一个）
-              </Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="例如：&#10;hello,你好&#10;hi,嗨&#10;goodbye,再见"
-                value={importContent}
-                onChangeText={setImportContent}
-                multiline={true}
-                numberOfLines={10}
-                textAlignVertical="top"
-                placeholderTextColor="#999"
-              />
-
-              {importSummary ? (
-                <View style={styles.importSummary}>
-                  <Text style={styles.importSummaryText}>{importSummary}</Text>
-                </View>
-              ) : null}
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => {
-                  setImportModalVisible(false);
-                  setImportContent('');
-                  setImportSummary('');
-                }}
-              >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>关闭</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonAppend]}
-                onPress={() => handleImportConfirm('append')}
-              >
-                <Text style={styles.modalButtonText}>追加</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonOverwrite]}
-                onPress={() => handleImportConfirm('overwrite')}
-              >
-                <Text style={styles.modalButtonText}>覆盖</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      
     </SafeAreaView>
   );
 };
