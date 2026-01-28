@@ -107,7 +107,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.rowButtonContainer}>
             <TouchableOpacity
               style={[styles.button, styles.secondaryButton, styles.thirdButton, styles.iconButton]}
-              onPress={() => navigation.navigate('WordManagement')}
+              onPress={() => navigation.navigate('WordManagement', { action: undefined as any })}
             >
               <EditIcon />
             </TouchableOpacity>

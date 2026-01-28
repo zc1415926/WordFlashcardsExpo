@@ -105,7 +105,6 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
     
     // Add the updated word
     await StorageService.addWord({
-      id: editingWord.id, // Keep the same ID
       english: english.trim(),
       chinese: chinese.trim(),
     });
@@ -153,13 +152,12 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
         console.log('所有文件名:', items.map(i => i.name));
         
         // 提取现有的 words.csv 相关文件（匹配两种格式：words.csv, words(1).csv, words.csv (1)）
-        const wordsItems = items.filter(item => {
-          return item.type === 'file' && (
-            item.name.match(/^words(\(\d+\))?\.csv$/i) || 
-            item.name.match(/^words\.csv\s*\(\d+\)$/i)
-          );
-        });
-        console.log('words 相关文件:', wordsItems);
+              const wordsItems = items.filter(item => {
+                return (item as any).type === 'file' && (
+                  item.name.match(/^words(\(\d+\))?\.csv$/i) || 
+                  item.name.match(/^words\.csv\s*\(\d+\)$/i)
+                );
+              });        console.log('words 相关文件:', wordsItems);
         
         if (wordsItems.length > 0) {
           // 找到最大的编号
@@ -193,35 +191,30 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
         console.log('CSV 内容前100个字符:', csvContent.substring(0, 100));
         console.log('创建文件:', fileName);
         
-        // 先创建文件（createFile 可能只接受文件名）
-        const file = await dirObj.createFile(fileName);
-        console.log('文件已创建:', file);
-        console.log('文件 URI:', file.uri);
-        console.log('文件 name:', file.name);
-        
-        // 使用 legacy API 写入内容
-        await FileSystem.writeAsStringAsync(file.uri, csvContent);
+        // 使用 FS API 直接写入文件
+        const fileUri = `${directory.uri}/${fileName}`;
+        await FileSystem.writeAsStringAsync(fileUri, csvContent);
         console.log('文件内容已写入');
         
         Alert.alert(
           '导出成功',
-          `已成功导出 ${exportWords.length} 个单词\n\n文件位置: ${file.uri}`,
+          `已成功导出 ${exportWords.length} 个单词\n\n文件位置: ${directory.uri}/${fileName}`,
           [
-            { text: '确定', onPress: () => {} },
+            { text: '确定', onPress: () => {} }
           ]
         );
       } catch (createError) {
         console.error('创建文件失败:', createError);
-        console.error('错误类型:', createError?.constructor?.name);
-        console.error('错误消息:', createError?.message);
-        console.error('错误堆栈:', createError?.stack);
+        console.error('错误类型:', (createError as any)?.constructor?.name);
+        console.error('错误消息:', (createError as any)?.message);
+        console.error('错误堆栈:', (createError as any)?.stack);
         throw createError;
       }
     } catch (error) {
       console.error('导出失败:', error);
-      console.error('错误类型:', error?.constructor?.name);
-      console.error('错误消息:', error?.message);
-      console.error('错误堆栈:', error?.stack);
+      console.error('错误类型:', (error as any)?.constructor?.name);
+      console.error('错误消息:', (error as any)?.message);
+      console.error('错误堆栈:', (error as any)?.stack);
       
       // 如果用户取消或失败，使用剪贴板作为备用方案
       try {
@@ -546,43 +539,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+    height: 60, // 减小行高
   },
   tableRowLast: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
+    height: 60, // 减小行高
   },
   englishCell: {
-    flex: 1,
-    padding: 15,
+    flex: 3, // 增加第一列宽度
+    padding: 10, // 减小内边距
     borderRightWidth: 1,
     borderRightColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
   chineseCell: {
-    flex: 1,
-    padding: 15,
+    flex: 3, // 增加第二列宽度
+    padding: 10, // 减小内边距
     borderRightWidth: 1,
     borderRightColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
   editCell: {
-    flex: 1,
-    padding: 15,
+    flex: 1, // 减小第三列宽度
+    padding: 10, // 减小内边距
     borderRightWidth: 1,
     borderRightColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteCell: {
-    flex: 1,
-    padding: 15,
+    flex: 1, // 减小第四列宽度
+    padding: 10, // 减小内边距
     justifyContent: 'center',
     alignItems: 'center',
   },
   cellText: {
-    fontSize: 18,
+    fontSize: 16, // 减小字体大小
     color: '#333',
     textAlign: 'left',
   },
@@ -708,123 +703,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     color: '#999',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    width: '100%',
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalHeaderButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  modalHeaderButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-  },
-  modalHeaderButtonText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  modalClose: {
-    fontSize: 28,
-    color: '#999',
-    fontWeight: 'bold',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalLabel: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 10,
-  },
-  modalInput: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    padding: 15,
-    fontSize: 16,
-    color: '#333',
-    minHeight: 200,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  importSummary: {
-    marginTop: 15,
-    padding: 15,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-  importSummaryText: {
-    fontSize: 16,
-    color: '#2E7D32',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    gap: 10,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalButtonSelectFile: {
-    flex: 0,
-    minWidth: 150,
-    backgroundColor: '#4ECDC4',
-    marginTop: 10,
-  },
-  modalButtonCancel: {
-    backgroundColor: '#E0E0E0',
-  },
-  modalButtonAppend: {
-    backgroundColor: '#4ECDC4',
-  },
-  modalButtonOverwrite: {
-    backgroundColor: '#FF6B6B',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  modalButtonTextCancel: {
-    color: '#666',
   },
 });
