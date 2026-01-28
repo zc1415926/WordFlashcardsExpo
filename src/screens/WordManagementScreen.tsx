@@ -11,6 +11,8 @@ import {
   StatusBar,
   Keyboard,
   ScrollView,
+  Modal,
+  Pressable,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Directory } from 'expo-file-system';
@@ -20,6 +22,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StorageService } from '../services/StorageService';
 import { WordCard } from '../types';
 import { RootStackParamList } from '../Navigation';
+import Svg, { Path } from 'react-native-svg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WordManagement'>;
 
@@ -27,6 +30,10 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
   const [words, setWords] = useState<WordCard[]>([]);
   const [english, setEnglish] = useState('');
   const [chinese, setChinese] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingWord, setEditingWord] = useState<WordCard | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -66,22 +73,49 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
     Alert.alert('成功', '单词添加成功！');
   };
 
-  const handleDeleteWord = async (id: string) => {
-    Alert.alert(
-      '确认删除',
-      '确定要删除这个单词吗？',
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '删除',
-          style: 'destructive',
-          onPress: async () => {
-            await StorageService.deleteWord(id);
-            await loadWords();
-          },
-        },
-      ]
-    );
+  const handleDeleteWord = (id: string) => {
+    setWordToDelete(id);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDeleteWord = async () => {
+    if (wordToDelete) {
+      await StorageService.deleteWord(wordToDelete);
+      await loadWords();
+      setDeleteModalVisible(false);
+      setWordToDelete(null);
+    }
+  };
+
+  const handleEditWord = (word: WordCard) => {
+    setEditingWord(word);
+    setEnglish(word.english);
+    setChinese(word.chinese);
+    setModalVisible(true);
+  };
+
+  const saveEditedWord = async () => {
+    if (!editingWord || !english.trim() || !chinese.trim()) {
+      Alert.alert('提示', '请输入英语和汉语意思');
+      return;
+    }
+
+    // Remove the old word
+    await StorageService.deleteWord(editingWord.id);
+    
+    // Add the updated word
+    await StorageService.addWord({
+      id: editingWord.id, // Keep the same ID
+      english: english.trim(),
+      chinese: chinese.trim(),
+    });
+
+    setModalVisible(false);
+    setEditingWord(null);
+    setEnglish('');
+    setChinese('');
+    await loadWords();
+    Alert.alert('成功', '单词修改成功！');
   };
 
   const handleExport = async (wordsToExport?: WordCard[]) => {
@@ -221,18 +255,36 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
 
   
 
-  const renderWordItem = ({ item }: { item: WordCard }) => (
-    <View style={styles.wordItem}>
-      <View style={styles.wordContent}>
-        <Text style={styles.englishText}>{item.english}</Text>
-        <Text style={styles.chineseText}>{item.chinese}</Text>
+  const renderWordItem = ({ item, index }: { item: WordCard, index: number }) => (
+    <View style={index === words.length - 1 ? styles.tableRowLast : styles.tableRow}>
+      <View style={styles.englishCell}>
+        <Text style={styles.cellText}>{item.english}</Text>
       </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteWord(item.id)}
-      >
-        <Text style={styles.deleteButtonText}>删除</Text>
-      </TouchableOpacity>
+      <View style={styles.chineseCell}>
+        <Text style={styles.cellText}>{item.chinese}</Text>
+      </View>
+      <View style={styles.editCell}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => handleEditWord(item)}
+        >
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </Svg>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.deleteCell}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => handleDeleteWord(item.id)}
+        >
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Path d="M18 6 6 18" />
+            <Path d="m6 6 12 12" />
+          </Svg>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -274,21 +326,114 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
           <Text style={styles.listTitle}>
             单词列表 ({words.length} 个)
           </Text>
-          <FlatList
-            data={words}
-            renderItem={renderWordItem}
-            keyExtractor={(item) => item.id}
-            style={styles.list}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>还没有单词，快去添加吧！</Text>
-              </View>
-            }
-          />
+          <View style={styles.tableContainer}>
+            <FlatList
+              data={words}
+              renderItem={renderWordItem}
+              keyExtractor={(item) => item.id}
+              style={styles.list}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>还没有单词，快去添加吧！</Text>
+                </View>
+              }
+            />
+          </View>
         </View>
       </View>
 
-      
+      {/* Edit Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>编辑单词</Text>
+            </View>
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder="英语单词"
+              value={english}
+              onChangeText={setEnglish}
+              placeholderTextColor="#999"
+            />
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder="汉语意思"
+              value={chinese}
+              onChangeText={setChinese}
+              placeholderTextColor="#999"
+            />
+            
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setModalVisible(false);
+                  setEditingWord(null);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>取消</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={saveEditedWord}
+              >
+                <Text style={styles.modalButtonText}>保存</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        animationType="none"
+        transparent={true}
+        visible={deleteModalVisible}
+        onRequestClose={() => {
+          setDeleteModalVisible(false);
+          setWordToDelete(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>确认删除</Text>
+            </View>
+            
+            <Text style={styles.modalText}>确定要删除这个单词吗？</Text>
+            
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setWordToDelete(null);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>取消</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteConfirmButton]}
+                onPress={confirmDeleteWord}
+              >
+                <Text style={styles.modalButtonText}>删除</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -366,43 +511,193 @@ const styles = StyleSheet.create({
   list: {
     flex: 1,
   },
-  wordItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-    elevation: 3,
-  },
-  wordContent: {
+  tableContainer: {
     flex: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  englishText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#4ECDC4',
   },
-  chineseText: {
+  headerCell: {
+    flex: 1,
+    padding: 15,
+    alignItems: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    justifyContent: 'center',
+  },
+  headerText: {
     fontSize: 18,
-    color: '#666',
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  headerCellLast: {
+    flex: 1,
+    padding: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  tableRowLast: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+  },
+  englishCell: {
+    flex: 1,
+    padding: 15,
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  chineseCell: {
+    flex: 1,
+    padding: 15,
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  editCell: {
+    flex: 1,
+    padding: 15,
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteCell: {
+    flex: 1,
+    padding: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cellText: {
+    fontSize: 18,
+    color: '#333',
+    textAlign: 'left',
+  },
+  editButton: {
+    backgroundColor: '#4ECDC4',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
   },
   deleteButton: {
     backgroundColor: '#FF6B6B',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
     borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
   },
-  deleteButtonText: {
+  buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  iconButton: {
+    padding: 10,
+    alignItems: 'center',
+  },
+  icon: {
+    width: 24,
+    height: 24,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    width: '100%',
+    maxHeight: '80%',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 18,
+    marginBottom: 15,
+    color: '#333',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  saveButton: {
+    backgroundColor: '#4ECDC4',
+  },
+  cancelButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  deleteModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    width: '100%',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#FF6B6B',
+  },
+  modalText: {
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,

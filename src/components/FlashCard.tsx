@@ -33,6 +33,30 @@ interface CardState {
   flipAnimation: Animated.Value;
 }
 
+// Helper function to calculate font size based on word length
+const calculateFontSize = (text: string, maxLength: number = 15): number => {
+  const baseFontSize = 56;
+  if (text.length <= maxLength) {
+    return baseFontSize;
+  } else {
+    // Reduce font size proportionally to length, with a minimum of 24
+    const reductionFactor = maxLength / text.length;
+    return Math.max(24, Math.floor(baseFontSize * reductionFactor));
+  }
+};
+
+// Helper function to calculate padding based on word length
+const calculatePadding = (text: string, maxLength: number = 15): number => {
+  const basePadding = 40;
+  if (text.length <= maxLength) {
+    return basePadding;
+  } else {
+    // Reduce padding for longer words, with a minimum of 10
+    const reductionFactor = maxLength / text.length;
+    return Math.max(10, Math.floor(basePadding * reductionFactor));
+  }
+};
+
 export const FlashCard: React.FC<FlashCardProps> = ({
   question,
   answer,
@@ -329,8 +353,23 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     const isCardA = card === cardA;
     const isFlipped = isCardA ? cardAIsFlipped.current : cardBIsFlipped.current;
 
+    // Calculate dynamic styles for long words
+    const questionFontSize = calculateFontSize(cardData.question);
+    const answerFontSize = calculateFontSize(cardData.answer);
+    const questionPadding = calculatePadding(cardData.question);
+    const answerPadding = calculatePadding(cardData.answer);
+    
+    // Determine which padding to use based on the current state (question or answer visible)
+    const currentPadding = isCardA ? (isFlipped ? answerPadding : questionPadding) : (isFlipped ? questionPadding : answerPadding);
+    
+    // Create dynamic styles
+    const dynamicCardStyle = {
+      ...styles.card,
+      padding: currentPadding,
+    };
+
     return (
-      <Animated.View style={[styles.card, animatedStyle]}>
+      <Animated.View style={[dynamicCardStyle, animatedStyle]}>
         {/* 问题区域 */}
         <Animated.View
           style={{
@@ -339,7 +378,7 @@ export const FlashCard: React.FC<FlashCardProps> = ({
             alignItems: 'center',
           }}
         >
-          <Text style={styles.questionText}>{cardData.question}</Text>
+          <Text style={[styles.questionText, { fontSize: questionFontSize }]} numberOfLines={1} adjustsFontSizeToFit>{cardData.question}</Text>
           <TouchableOpacity style={styles.flipButton} onPress={handleFlip}>
             <Text style={styles.flipButtonText}>查看答案</Text>
           </TouchableOpacity>
@@ -355,10 +394,11 @@ export const FlashCard: React.FC<FlashCardProps> = ({
                 { translateY: answerTranslateYLarge },
                 { translateY: answerTranslateY },
               ],
+              padding: answerPadding, // Apply dynamic padding to answer container
             },
           ]}
         >
-          <Text style={styles.answerText}>{cardData.answer}</Text>
+          <Text style={[styles.answerText, { fontSize: answerFontSize }]} numberOfLines={1} adjustsFontSizeToFit>{cardData.answer}</Text>
           <TouchableOpacity style={styles.nextButton} onPress={handleFlip}>
             <Text style={styles.nextButtonText}>返回</Text>
           </TouchableOpacity>
@@ -390,7 +430,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 60,
-    padding: 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.34,
@@ -409,10 +448,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 60,
-    padding: 40,
   },
   questionText: {
-    fontSize: 56,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
@@ -420,7 +457,6 @@ const styles = StyleSheet.create({
     marginBottom: 80,
   },
   answerText: {
-    fontSize: 56,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
