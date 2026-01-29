@@ -13,6 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StorageService } from '../services/StorageService';
 import { TTSService } from '../services/TTSService';
 import { FlashCard } from '../components/FlashCard';
+import { PageHeader } from '../components/PageHeader';
 import { WordCard } from '../types';
 import { RootStackParamList } from '../Navigation';
 
@@ -120,15 +121,16 @@ export const StudyScreen: React.FC<Props> = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.content}>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← 返回</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{modeTitle}</Text>
-          <Text style={styles.progress}>
-            {currentIndex + 1} / {words.length}
-          </Text>
-        </View>
+        <PageHeader
+          title={modeTitle}
+          navigation={navigation}
+          insets={insets}
+          rightElement={
+            <Text style={styles.progress}>
+              {currentIndex + 1} / {words.length}
+            </Text>
+          }
+        />
 
         <FlashCard
           question={question}
@@ -158,24 +160,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  backButton: {
-    fontSize: 18,
-    color: '#FF6B6B',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF6B6B',
-    flex: 1,
-    textAlign: 'center',
   },
   progress: {
     fontSize: 18,

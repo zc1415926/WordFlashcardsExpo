@@ -17,6 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StorageService } from '../services/StorageService';
 import { WordCard } from '../types';
 import { RootStackParamList } from '../Navigation';
+import { PageHeader } from '../components/PageHeader';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Import'>;
 
@@ -171,13 +172,11 @@ export const ImportScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.content}>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← 返回</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>导入单词</Text>
-          <View style={{ width: 50 }} />
-        </View>
+        <PageHeader
+          title="导入单词"
+          navigation={navigation}
+          insets={insets}
+        />
 
         <ScrollView style={styles.body}>
           <View style={styles.section}>
@@ -251,33 +250,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    fontSize: 18,
-    color: '#666',
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    padding: 20,
   },
   body: {
     flex: 1,
-    padding: 20,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 25,
   },
   sectionTitle: {
     fontSize: 20,

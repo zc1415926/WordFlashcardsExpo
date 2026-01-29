@@ -22,6 +22,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StorageService } from '../services/StorageService';
 import { WordCard } from '../types';
 import { RootStackParamList } from '../Navigation';
+import { PageHeader } from '../components/PageHeader';
 import Svg, { Path } from 'react-native-svg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WordManagement'>;
@@ -224,13 +225,11 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.content}>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← 返回</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>管理单词</Text>
-          <View style={{ width: 50 }} />
-        </View>
+        <PageHeader
+          title="管理单词"
+          navigation={navigation}
+          insets={insets}
+        />
 
         <View style={styles.inputContainer}>
           <TextInput
@@ -380,22 +379,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  backButton: {
-    fontSize: 18,
-    color: '#FF6B6B',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FF6B6B',
   },
   inputContainer: {
     backgroundColor: '#FFFFFF',
