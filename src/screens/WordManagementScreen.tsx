@@ -15,8 +15,8 @@ import {
   Pressable,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Directory } from 'expo-file-system';
 import * as Clipboard from 'expo-clipboard';
+import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StorageService } from '../services/StorageService';
@@ -118,128 +118,67 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
   };
 
   const handleExport = async (wordsToExport?: WordCard[]) => {
-    const exportWords = wordsToExport || words;
-
-    if (exportWords.length === 0) {
-      Alert.alert('提示', '没有单词可以导出');
-      return;
-    }
-
-    // 生成 CSV 内容
-    const csvContent = exportWords.map(word => `${word.english},${word.chinese}`).join('\n');
-
-    try {
-      // 让用户选择保存目录
-      const directory = await Directory.pickDirectoryAsync('选择保存位置');
-      
-      if (!directory) {
-        return; // 用户取消了选择
+      const exportWords = wordsToExport || words;
+  
+      if (exportWords.length === 0) {
+        Alert.alert('提示', '没有单词可以导出');
+        return;
       }
-      
-      console.log('选择的目录:', directory);
-      
-      // 使用 Directory 对象的 createFile 方法
-      const dirObj = new Directory(directory.uri);
-      console.log('Directory 对象:', dirObj);
-      console.log('Directory 方法:', Object.getOwnPropertyNames(Object.getPrototypeOf(dirObj)));
-      
-      // 生成唯一的文件名
-      let fileName = 'words.csv';
-      try {
-        // 使用 list() 而不是 listFiles()
-        const items = await dirObj.list();
-        console.log('目录中的文件/文件夹:', items);
-        console.log('所有文件名:', items.map(i => i.name));
-        
-        // 提取现有的 words.csv 相关文件（匹配两种格式：words.csv, words(1).csv, words.csv (1)）
-              const wordsItems = items.filter(item => {
-                return (item as any).type === 'file' && (
-                  item.name.match(/^words(\(\d+\))?\.csv$/i) || 
-                  item.name.match(/^words\.csv\s*\(\d+\)$/i)
-                );
-              });        console.log('words 相关文件:', wordsItems);
-        
-        if (wordsItems.length > 0) {
-          // 找到最大的编号
-          let maxNum = 0;
-          wordsItems.forEach(item => {
-            // 匹配 words(数字).csv 格式
-            let match = item.name.match(/^words\((\d+)\)\.csv$/i);
-            if (!match) {
-              // 匹配 words.csv (数字) 格式
-              match = item.name.match(/^words\.csv\s*\((\d+)\)$/i);
-            }
-            if (match) {
-              const num = parseInt(match[1], 10);
-              if (num > maxNum) {
-                maxNum = num;
-              }
-            }
-          });
-          
-          // 生成新的文件名：words(数字).csv
-          fileName = `words(${maxNum + 1}).csv`;
-          console.log('使用新文件名:', fileName);
-        }
-      } catch (listError) {
-        console.log('列出目录文件失败，可能目录为空:', listError);
-      }
-      
-      // 尝试创建文件
-      try {
-        console.log('CSV 内容长度:', csvContent.length);
-        console.log('CSV 内容前100个字符:', csvContent.substring(0, 100));
-        console.log('创建文件:', fileName);
-        
-        // 使用 FS API 直接写入文件
-        const fileUri = `${directory.uri}/${fileName}`;
+  
+      // 生成 CSV 内容，添加 BOM 以便 Excel 正确识别 UTF-8 编码
+          const csvContent = '\uFEFF' + exportWords.map(word => {
+            // 清理不可见字符（零宽字符、软连字符等）
+            const cleanEnglish = word.english.replace(/[\u200B-\u200D\uFEFF]/g, '');
+            const cleanChinese = word.chinese.replace(/[\u200B-\u200D\uFEFF]/g, '');
+            return `${cleanEnglish},${cleanChinese}`;
+          }).join('\n');      try {
+        // 在应用的文档目录中创建临时文件
+        const fileUri = `${FileSystem.documentDirectory}words.csv`;
         await FileSystem.writeAsStringAsync(fileUri, csvContent);
-        console.log('文件内容已写入');
+        console.log('文件已创建:', fileUri);
         
+        // 使用分享功能让用户保存文件
+              await Sharing.shareAsync(fileUri, {
+                mimeType: 'text/csv',
+                dialogTitle: '导出单词列表',
+                UTI: 'public.comma-separated-values-text',
+              });        
         Alert.alert(
           '导出成功',
-          `已成功导出 ${exportWords.length} 个单词\n\n文件位置: ${directory.uri}/${fileName}`,
+          `已成功导出 ${exportWords.length} 个单词`,
           [
             { text: '确定', onPress: () => {} }
           ]
         );
-      } catch (createError) {
-        console.error('创建文件失败:', createError);
-        console.error('错误类型:', (createError as any)?.constructor?.name);
-        console.error('错误消息:', (createError as any)?.message);
-        console.error('错误堆栈:', (createError as any)?.stack);
-        throw createError;
+      } catch (error) {
+        console.error('导出失败:', error);
+        console.error('错误类型:', (error as any)?.constructor?.name);
+        console.error('错误消息:', (error as any)?.message);
+        console.error('错误堆栈:', (error as any)?.stack);
+        
+        // 如果用户取消或失败，使用剪贴板作为备用方案
+        try {
+          await Clipboard.setStringAsync(csvContent);
+          Alert.alert(
+            '导出成功（备用方案）',
+            `已成功导出 ${exportWords.length} 个单词\n\n由于无法保存到文件，内容已复制到剪贴板\n请粘贴到文本编辑器并保存为 words.csv 文件`,
+            [
+              { text: '确定', onPress: () => {} },
+            ]
+          );
+        } catch (clipboardError) {
+          const errorMessage = error instanceof Error ? error.message : '未知错误';
+          console.error('Export error:', error);
+          Alert.alert(
+            '导出失败',
+            `复制到剪贴板时出错\n\n错误详情: ${errorMessage}`,
+            [
+              { text: '确定', onPress: () => {} },
+            ]
+          );
+        }
       }
-    } catch (error) {
-      console.error('导出失败:', error);
-      console.error('错误类型:', (error as any)?.constructor?.name);
-      console.error('错误消息:', (error as any)?.message);
-      console.error('错误堆栈:', (error as any)?.stack);
-      
-      // 如果用户取消或失败，使用剪贴板作为备用方案
-      try {
-        await Clipboard.setStringAsync(csvContent);
-        Alert.alert(
-          '导出成功（备用方案）',
-          `已成功导出 ${exportWords.length} 个单词\n\n由于无法保存到文件，内容已复制到剪贴板\n请粘贴到文本编辑器并保存为 words.csv 文件`,
-          [
-            { text: '确定', onPress: () => {} },
-          ]
-        );
-      } catch (clipboardError) {
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
-        console.error('Export error:', error);
-        Alert.alert(
-          '导出失败',
-          `复制到剪贴板时出错\n\n错误详情: ${errorMessage}`,
-          [
-            { text: '确定', onPress: () => {} },
-          ]
-        );
-      }
-    }
-  };
-
+    };
   
 
   
@@ -356,6 +295,7 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
               value={english}
               onChangeText={setEnglish}
               placeholderTextColor="#999"
+              textAlignVertical="center"
             />
             
             <TextInput
@@ -364,6 +304,7 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
               value={chinese}
               onChangeText={setChinese}
               placeholderTextColor="#999"
+              textAlignVertical="center"
             />
             
             <View style={styles.modalButtonContainer}>
@@ -641,10 +582,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderRadius: 10,
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingVertical: 0,
+    height: 50,
     fontSize: 18,
     marginBottom: 15,
     color: '#333',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   modalButtonContainer: {
     flexDirection: 'row',
