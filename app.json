@@ -4,7 +4,7 @@
     "slug": "wordflashcardsexpo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/flashcard_icon_v2.png",
+    "icon": "./assets/flashcard_icon_v3.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -18,7 +18,7 @@
     "android": {
       "package": "com.zc1415926.wordflashcardsexpo",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/flashcard_icon_v2.png",
+        "foregroundImage": "./assets/flashcard_icon_v3.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,

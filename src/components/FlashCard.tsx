@@ -33,15 +33,25 @@ interface CardState {
   flipAnimation: Animated.Value;
 }
 
+// 检测文本是否主要是英文字符
+const isMainlyEnglish = (text: string): boolean => {
+  const englishChars = text.replace(/[^a-zA-Z]/g, '').length;
+  return englishChars / text.length > 0.5;
+};
+
 // Helper function to calculate font size based on word length
-const calculateFontSize = (text: string, maxLength: number = 5): number => {
-  const baseFontSize = 40;
+const calculateFontSize = (text: string): number => {
+  const isEnglish = isMainlyEnglish(text);
+  // 英文使用更大的基础字体和更宽松的阈值
+  const baseFontSize = isEnglish ? 56 : 40;
+  const maxLength = isEnglish ? 10 : 5; // 英文10字符内保持大字体
+  
   if (text.length <= maxLength) {
     return baseFontSize;
   } else {
-    // Reduce font size proportionally to length, with a minimum of 18
+    // Reduce font size proportionally to length, with a minimum of 20
     const reductionFactor = maxLength / text.length;
-    return Math.max(18, Math.floor(baseFontSize * reductionFactor));
+    return Math.max(20, Math.floor(baseFontSize * reductionFactor));
   }
 };
 
@@ -271,6 +281,13 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     const questionPadding = calculatePadding(cardData.question);
     const answerPadding = calculatePadding(cardData.answer);
     
+    // 调试信息
+    if (isActive) {
+      console.log('=== FlashCard Debug ===');
+      console.log('Question:', cardData.question, 'FontSize:', questionFontSize, 'isEnglish:', isMainlyEnglish(cardData.question));
+      console.log('Answer:', cardData.answer, 'FontSize:', answerFontSize, 'isEnglish:', isMainlyEnglish(cardData.answer));
+    }
+    
     // 根据当前状态和活跃卡片确定使用哪种内边距
     const currentVerticalPadding = isActive
       ? (isFlipped ? answerPadding : questionPadding)
@@ -295,7 +312,18 @@ export const FlashCard: React.FC<FlashCardProps> = ({
             },
           ]}
         >
-          <Text style={[styles.questionText, { fontSize: questionFontSize }]} numberOfLines={1} adjustsFontSizeToFit>
+          <Text 
+            style={[styles.questionText, { fontSize: questionFontSize }]} 
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+            allowFontScaling={false}
+            onLayout={(event) => {
+              if (isActive) {
+                console.log('Question Text Layout - Width:', event.nativeEvent.layout.width, 'Height:', event.nativeEvent.layout.height);
+              }
+            }}
+          >
             {cardData.question}
           </Text>
         </Animated.View>
@@ -330,9 +358,15 @@ export const FlashCard: React.FC<FlashCardProps> = ({
           <View style={styles.answerTextContainer}>
             <Text 
               style={[styles.answerText, { fontSize: answerFontSize }]} 
-              numberOfLines={1} 
+              numberOfLines={1}
               adjustsFontSizeToFit
+              minimumFontScale={0.5}
               allowFontScaling={false}
+              onLayout={(event) => {
+                if (isActive) {
+                  console.log('Answer Text Layout - Width:', event.nativeEvent.layout.width, 'Height:', event.nativeEvent.layout.height);
+                }
+              }}
             >
               {cardData.answer}
             </Text>
@@ -360,7 +394,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 10,
   },
   card: {
     width: '100%',
@@ -368,9 +402,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#FFFFFF',
     justifyContent: 'flex-start',
-    alignItems: 'center',
     paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.34,
@@ -381,7 +414,6 @@ const styles = StyleSheet.create({
   questionContainer: {
     height: 116,
     justifyContent: 'center',
-    alignItems: 'center',
     width: '100%',
   },
   answerContainer: {
@@ -393,28 +425,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#4ECDC4',
     borderRadius: 25,
     justifyContent: 'flex-start',
-    alignItems: 'center',
     paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
   },
   answerTextContainer: {
     height: 116,
     justifyContent: 'center',
-    alignItems: 'center',
     width: '100%',
   },
   questionText: {
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    paddingHorizontal: 10,
     width: '100%',
   },
   answerText: {
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    paddingHorizontal: 10,
     width: '100%',
   },
   flipButton: {
