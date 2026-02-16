@@ -34,26 +34,26 @@ interface CardState {
 }
 
 // Helper function to calculate font size based on word length
-const calculateFontSize = (text: string, maxLength: number = 15): number => {
-  const baseFontSize = 56;
+const calculateFontSize = (text: string, maxLength: number = 5): number => {
+  const baseFontSize = 40;
   if (text.length <= maxLength) {
     return baseFontSize;
   } else {
-    // Reduce font size proportionally to length, with a minimum of 24
+    // Reduce font size proportionally to length, with a minimum of 18
     const reductionFactor = maxLength / text.length;
-    return Math.max(24, Math.floor(baseFontSize * reductionFactor));
+    return Math.max(18, Math.floor(baseFontSize * reductionFactor));
   }
 };
 
 // Helper function to calculate padding based on word length
-const calculatePadding = (text: string, maxLength: number = 15): number => {
-  const basePadding = 40;
+const calculatePadding = (text: string, maxLength: number = 5): number => {
+  const basePadding = 30;
   if (text.length <= maxLength) {
     return basePadding;
   } else {
-    // Reduce padding for longer words, with a minimum of 10
+    // Reduce padding for longer words, with a minimum of 8
     const reductionFactor = maxLength / text.length;
-    return Math.max(10, Math.floor(basePadding * reductionFactor));
+    return Math.max(8, Math.floor(basePadding * reductionFactor));
   }
 };
 
@@ -119,18 +119,15 @@ export const FlashCard: React.FC<FlashCardProps> = ({
   };
 
   const handleFlip = () => {
-    console.log('=== handleFlip 被调用 ===');
     const card = getActiveCard();
     const isFlipped = activeCard === 'A' ? cardAIsFlipped.current : cardBIsFlipped.current;
     const toValue = isFlipped ? 0 : 1;
-    console.log('当前卡片:', activeCard, 'isFlipped:', isFlipped, 'toValue:', toValue);
 
     Animated.timing(card.flipAnimation, {
       toValue: toValue,
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      console.log('翻转动画完成');
       // 更新翻转状态
       if (activeCard === 'A') {
         cardAIsFlipped.current = !isFlipped;
@@ -141,145 +138,86 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     });
   };
 
-  const handleNext = () => {
-    console.log('=== handleNext 被调用 ===');
-    if (isAnimating.current) {
-      console.log('正在动画中，忽略 handleNext');
-      return;
-    }
-    isAnimating.current = true;
-
+  // 创建卡片切换动画的公共函数
+  const createCardTransition = (
+    outgoingOffset: number,
+    incomingOffset: number,
+    onComplete: () => void,
+    preloadData?: { question: string; answer: string } | null
+  ) => {
     const outgoing = getActiveCard();
     const incoming = getInactiveCard();
-    console.log('当前卡片:', activeCard, '切换到:', activeCard === 'A' ? 'B' : 'A');
 
-    // 预加载下一个卡片数据
-    const nextData = onNextData ? onNextData() : null;
-    if (nextData) {
+    // 预加载卡片数据
+    if (preloadData) {
       if (activeCard === 'A') {
-        setCardBData(nextData);
+        setCardBData(preloadData);
       } else {
-        setCardAData(nextData);
+        setCardAData(preloadData);
       }
     }
 
     // 重置并设置入场动画的初始状态
     resetCard(incoming, activeCard === 'A');
-    incoming.panX.setValue(500);
+    incoming.panX.setValue(incomingOffset);
     incoming.scale.setValue(0.8);
     incoming.opacity.setValue(0);
 
     // 同时执行退出和入场动画
     Animated.parallel([
       // 退出动画
-      Animated.parallel([
-        Animated.timing(outgoing.panX, {
-          toValue: -500,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(outgoing.scale, {
-          toValue: 0.8,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(outgoing.opacity, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]),
-      // 入场动画，立即开始，使用timing替代spring
-      Animated.parallel([
-        Animated.timing(incoming.panX, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(incoming.scale, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(incoming.opacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(outgoing.panX, {
+        toValue: outgoingOffset,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(outgoing.scale, {
+        toValue: 0.8,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(outgoing.opacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      // 入场动画
+      Animated.timing(incoming.panX, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(incoming.scale, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(incoming.opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
-      onNextProp();
+      onComplete();
       setActiveCard(activeCard === 'A' ? 'B' : 'A');
       isAnimating.current = false;
     });
+  };
+
+  const handleNext = () => {
+    if (isAnimating.current) return;
+    isAnimating.current = true;
+
+    const nextData = onNextData ? onNextData() : null;
+    createCardTransition(-500, 500, onNextProp, nextData);
   };
 
   const handlePrevious = () => {
     if (isAnimating.current) return;
     isAnimating.current = true;
 
-    const outgoing = getActiveCard();
-    const incoming = getInactiveCard();
-
-    // 预加载上一个卡片数据
     const prevData = onPreviousData ? onPreviousData() : null;
-    if (prevData) {
-      if (activeCard === 'A') {
-        setCardBData(prevData);
-      } else {
-        setCardAData(prevData);
-      }
-    }
-
-    // 重置并设置入场动画的初始状态
-    resetCard(incoming, activeCard === 'A');
-    incoming.panX.setValue(-500);
-    incoming.scale.setValue(0.8);
-    incoming.opacity.setValue(0);
-
-    // 同时执行退出和入场动画
-    Animated.parallel([
-      // 退出动画
-      Animated.parallel([
-        Animated.timing(outgoing.panX, {
-          toValue: 500,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(outgoing.scale, {
-          toValue: 0.8,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(outgoing.opacity, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]),
-      // 入场动画，立即开始，使用timing替代spring
-      Animated.parallel([
-        Animated.timing(incoming.panX, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(incoming.scale, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(incoming.opacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      onPrevious();
-      setActiveCard(activeCard === 'A' ? 'B' : 'A');
-      isAnimating.current = false;
-    });
+    createCardTransition(500, -500, onPrevious, prevData);
   };
 
   const panResponder = PanResponder.create({
@@ -314,71 +252,62 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     },
   });
 
-  const renderCard = (card: CardState, cardData: CardData, isBack: boolean = false) => {
-    // 使用透明度和位移来显示/隐藏答案
-    const questionOpacity = card.flipAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [1, 0],
-    });
+  // 在 renderCard 外部预计算动画插值映射，避免每次渲染重新创建配置对象
+  const getInterpolations = (card: CardState) => ({
+    questionOpacity: { inputRange: [0, 1], outputRange: [1, 0] },
+    questionTranslateY: { inputRange: [0, 1], outputRange: [0, -20] },
+    answerOpacity: { inputRange: [0, 1], outputRange: [0, 1] },
+    answerTranslateY: { inputRange: [0, 1], outputRange: [20, 0] },
+    answerTranslateYLarge: { inputRange: [0, 1], outputRange: [1000, 0] },
+  });
 
-    const questionTranslateY = card.flipAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, -20],
-    });
-
-    const answerOpacity = card.flipAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, 1],
-    });
-
-    const answerTranslateY = card.flipAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [20, 0],
-    });
-
-    const answerTranslateYLarge = card.flipAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [1000, 0],
-    });
-
-    const animatedStyle = {
-      transform: [
-        { translateX: card.panX },
-        { scale: card.scale },
-      ],
-      opacity: card.opacity,
-    };
-
-    // 判断当前卡片是否翻转
-    const isCardA = card === cardA;
+  const renderCard = (card: CardState, cardData: CardData, isCardA: boolean) => {
     const isFlipped = isCardA ? cardAIsFlipped.current : cardBIsFlipped.current;
+    const isActive = (isCardA && activeCard === 'A') || (!isCardA && activeCard === 'B');
 
-    // Calculate dynamic styles for long words
+    // Calculate dynamic font sizes and padding
     const questionFontSize = calculateFontSize(cardData.question);
     const answerFontSize = calculateFontSize(cardData.answer);
     const questionPadding = calculatePadding(cardData.question);
     const answerPadding = calculatePadding(cardData.answer);
     
-    // Determine which padding to use based on the current state (question or answer visible)
-    const currentPadding = isCardA ? (isFlipped ? answerPadding : questionPadding) : (isFlipped ? questionPadding : answerPadding);
-    
-    // Create dynamic styles
-    const dynamicCardStyle = {
-      ...styles.card,
-      padding: currentPadding,
+    // 根据当前状态和活跃卡片确定使用哪种内边距
+    const currentVerticalPadding = isActive
+      ? (isFlipped ? answerPadding : questionPadding)
+      : (isFlipped ? questionPadding : answerPadding);
+
+    const interps = getInterpolations(card);
+
+    const animatedStyle = {
+      transform: [{ translateX: card.panX }, { scale: card.scale }],
+      opacity: card.opacity,
     };
 
     return (
-      <Animated.View style={[dynamicCardStyle, animatedStyle]}>
+      <Animated.View style={[styles.card, { paddingTop: currentVerticalPadding, paddingBottom: currentVerticalPadding }, animatedStyle]}>
         {/* 问题区域 */}
         <Animated.View
+          style={[
+            styles.questionContainer,
+            {
+              opacity: card.flipAnimation.interpolate(interps.questionOpacity),
+              transform: [{ translateY: card.flipAnimation.interpolate(interps.questionTranslateY) }],
+            },
+          ]}
+        >
+          <Text style={[styles.questionText, { fontSize: questionFontSize }]} numberOfLines={1} adjustsFontSizeToFit>
+            {cardData.question}
+          </Text>
+        </Animated.View>
+        <Animated.View
           style={{
-            opacity: questionOpacity,
-            transform: [{ translateY: questionTranslateY }],
+            flex: 1,
+            justifyContent: 'center',
             alignItems: 'center',
+            width: '100%',
+            opacity: card.flipAnimation.interpolate(interps.questionOpacity),
           }}
         >
-          <Text style={[styles.questionText, { fontSize: questionFontSize }]} numberOfLines={1} adjustsFontSizeToFit>{cardData.question}</Text>
           <TouchableOpacity style={styles.flipButton} onPress={handleFlip}>
             <Text style={styles.flipButtonText}>查看答案</Text>
           </TouchableOpacity>
@@ -389,19 +318,30 @@ export const FlashCard: React.FC<FlashCardProps> = ({
           style={[
             styles.answerContainer,
             {
-              opacity: answerOpacity,
+              opacity: card.flipAnimation.interpolate(interps.answerOpacity),
               transform: [
-                { translateY: answerTranslateYLarge },
-                { translateY: answerTranslateY },
+                { translateY: card.flipAnimation.interpolate(interps.answerTranslateYLarge) },
+                { translateY: card.flipAnimation.interpolate(interps.answerTranslateY) },
               ],
-              padding: answerPadding, // Apply dynamic padding to answer container
+              paddingVertical: answerPadding,
             },
           ]}
         >
-          <Text style={[styles.answerText, { fontSize: answerFontSize }]} numberOfLines={1} adjustsFontSizeToFit>{cardData.answer}</Text>
-          <TouchableOpacity style={styles.nextButton} onPress={handleFlip}>
-            <Text style={styles.nextButtonText}>返回</Text>
-          </TouchableOpacity>
+          <View style={styles.answerTextContainer}>
+            <Text 
+              style={[styles.answerText, { fontSize: answerFontSize }]} 
+              numberOfLines={1} 
+              adjustsFontSizeToFit
+              allowFontScaling={false}
+            >
+              {cardData.answer}
+            </Text>
+          </View>
+          <View style={styles.nextButtonContainer}>
+            <TouchableOpacity style={styles.nextButton} onPress={handleFlip}>
+              <Text style={styles.nextButtonText}>返回</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </Animated.View>
     );
@@ -409,8 +349,8 @@ export const FlashCard: React.FC<FlashCardProps> = ({
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      {renderCard(cardA, cardAData)}
-      {renderCard(cardB, cardBData)}
+      {renderCard(cardA, cardAData, true)}
+      {renderCard(cardB, cardBData, false)}
     </View>
   );
 };
@@ -429,13 +369,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.34,
     shadowRadius: 6.27,
     elevation: 10,
     position: 'absolute',
+  },
+  questionContainer: {
+    height: 116,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   answerContainer: {
     position: 'absolute',
@@ -447,21 +394,28 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  answerTextContainer: {
+    height: 116,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   questionText: {
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginTop: -20,
-    marginBottom: 80,
+    paddingHorizontal: 10,
+    width: '100%',
   },
   answerText: {
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: -20,
-    marginBottom: 80,
+    paddingHorizontal: 10,
+    width: '100%',
   },
   flipButton: {
     backgroundColor: '#4ECDC4',
@@ -473,6 +427,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 22,
     fontWeight: 'bold',
+  },
+  nextButtonContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   nextButton: {
     backgroundColor: '#FFFFFF',

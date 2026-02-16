@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "WordFlashcardsExpo",
-    "slug": "WordFlashcardsExpo",
+    "name": "知云闪卡",
+    "slug": "wordflashcardsexpo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/flashcard_icon_v2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -16,8 +16,9 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.zc1415926.wordflashcardsexpo",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/flashcard_icon_v2.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -25,6 +26,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "579348df-4053-473e-a4da-a78fa46484e0"
+      }
     }
   }
 }
