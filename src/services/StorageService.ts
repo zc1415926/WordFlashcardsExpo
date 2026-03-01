@@ -39,6 +39,14 @@ export class StorageService {
     await this.saveWords(filteredWords);
   }
 
+  static async updateWord(updatedWord: WordCard): Promise<void> {
+    const words = await this.getWords();
+    const updatedWords = words.map(word => 
+      word.id === updatedWord.id ? updatedWord : word
+    );
+    await this.saveWords(updatedWords);
+  }
+
   static async clearAllWords(): Promise<void> {
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);

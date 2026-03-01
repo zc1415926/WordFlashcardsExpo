@@ -101,11 +101,9 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
       return;
     }
 
-    // Remove the old word
-    await StorageService.deleteWord(editingWord.id);
-    
-    // Add the updated word
-    await StorageService.addWord({
+    // Update the word in place, preserving order
+    await StorageService.updateWord({
+      ...editingWord,
       english: english.trim(),
       chinese: chinese.trim(),
     });

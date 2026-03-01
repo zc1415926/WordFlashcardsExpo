@@ -2,11 +2,15 @@
   "expo": {
     "name": "知云闪卡",
     "slug": "wordflashcardsexpo",
-    "version": "1.0.0",
+    "version": "1.0.1",
+    "description": "英汉单词闪卡学习应用，支持添加、管理、导入导出单词，提供多种学习模式",
+    "githubUrl": "https://github.com/zc1415926/WordFlashcardsExpo",
+    "primaryColor": "#4ECDC4",
     "orientation": "portrait",
     "icon": "./assets/flashcard_icon_v4.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "platforms": ["android", "ios", "web"],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -17,6 +21,7 @@
     },
     "android": {
       "package": "com.zc1415926.wordflashcardsexpo",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/flashcard_icon_v4.png",
         "backgroundColor": "#ffffff"
