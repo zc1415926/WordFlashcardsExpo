@@ -189,7 +189,7 @@ export const WordManagementScreen: React.FC<Props> = ({ navigation, route }) => 
   const renderWordItem = ({ item, index }: { item: WordCard, index: number }) => (
     <View style={index === words.length - 1 ? styles.tableRowLast : styles.tableRow}>
       <View style={styles.englishCell}>
-        <Text style={styles.cellText}>{item.english}</Text>
+        <Text style={[styles.cellText, { fontFamily: 'CenturyGothic' }]}>{item.english}</Text>
       </View>
       <View style={styles.chineseCell}>
         <Text style={styles.cellText}>{item.chinese}</Text>

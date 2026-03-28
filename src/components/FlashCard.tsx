@@ -280,6 +280,10 @@ export const FlashCard: React.FC<FlashCardProps> = ({
     const answerFontSize = calculateFontSize(cardData.answer);
     const questionPadding = calculatePadding(cardData.question);
     const answerPadding = calculatePadding(cardData.answer);
+
+    // 判断是否为英文，应用 Gothic 字体
+    const questionIsEnglish = isMainlyEnglish(cardData.question);
+    const answerIsEnglish = isMainlyEnglish(cardData.answer);
     
     // 调试信息
     if (isActive) {
@@ -312,8 +316,15 @@ export const FlashCard: React.FC<FlashCardProps> = ({
             },
           ]}
         >
-          <Text 
-            style={[styles.questionText, { fontSize: questionFontSize }]} 
+          <Text
+            style={[
+              styles.questionText,
+              {
+                fontSize: questionFontSize,
+                fontFamily: questionIsEnglish ? 'CenturyGothic' : undefined,
+                fontWeight: questionIsEnglish ? undefined : 'bold',
+              }
+            ]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.5}
@@ -356,8 +367,14 @@ export const FlashCard: React.FC<FlashCardProps> = ({
           ]}
         >
           <View style={styles.answerTextContainer}>
-            <Text 
-              style={[styles.answerText, { fontSize: answerFontSize }]} 
+            <Text
+              style={[
+                styles.answerText,
+                              {
+                                fontSize: answerFontSize,
+                                fontFamily: answerIsEnglish ? 'CenturyGothic' : undefined,
+                                fontWeight: answerIsEnglish ? undefined : 'bold',
+                              }              ]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.5}
