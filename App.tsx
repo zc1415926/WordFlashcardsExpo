@@ -12,6 +12,8 @@ export default function App() {
       try {
         await Font.loadAsync({
           'CenturyGothic': require('./assets/Gothic.ttf'),
+          'StickandBall': require('./assets/StickandBall.ttf'),
+          'StickandBallthin': require('./assets/StickandBallthin.ttf'),
         });
         setFontsLoaded(true);
       } catch (error) {
